@@ -5,7 +5,7 @@
  * An open source library for CodeIgniter to replace CI_Model
  *
  * @package		Application
- * @author		hassanabbasi (Hassan ur Rehman Abbasi)
+ * @author		Hassan ur Rehman Abbasi
  * @author		DoozieLabs
  * @link		http://www.doozielabs.com
  *
@@ -21,30 +21,76 @@
  * @package		Application
  * @subpackage	Core
  * @category	Libraries
- * @author		hassanabbasi (Hassan ur Rehman Abbasi)
+ * @author		Hassan ur Rehman Abbasi
  * @author		DoozieLabs
  */
 class MY_Model extends CI_Model {
+	private $query_settings;
+
 	/**
 	 * Constructor
 	 *
 	 * @access public
 	 */
-	private static $table;
-	function __construct()
+	public function __construct()
  	{
-  		MY_Model::$table = $this->_get_table_name();
-  		log_message('debug', "[Model." . MY_Model::$table . "] Initialized");
+		log_message('debug', "[Model." . $this->_get_table_name() . "] - Initialized");
+		$this->reset_query();
  	}
-	 
+
+ 	/**
+	 * Retrieves Table Name of current Model
+ 	 *
+ 	 * To make this `function` work you need to add a `const table` in your derieved model `class`. If
+ 	 * `const table` is not set, it will consider model `class` name as the table name
+ 	 *
+ 	 * @access	protected
+ 	 * @param	`void`
+ 	 * @return	`string`	-	value of `const table` if it is set, otherwise `class` name
+ 	 */
 	protected function _get_table_name () {
-		$klass = new ReflectionClass($this);
-		return $klass->getConstant("table");
+		$class = new ReflectionClass($this);
+		$table = $class->getConstant("table");
+		
+		return $table ? $table : $class->name;
 	}
 
+	/**
+ 	 * Resets search query parameters
+ 	 *
+ 	 * @access	public
+ 	 * @param	`void`
+ 	 * @return `object`	-	Returns self
+ 	 *
+ 	 */
+ 	public function reset_query ( ) {
+  		log_message('debug', "[Model." . $this->_get_table_name() . "] (reset_query)");
+	 	$this->query_settings = array (
+			'columns'	=> array( '*' ),
+			'table'		=> $this->_get_table_name(),
+			'where'		=> null,
+			'order'		=> null,
+			'group'		=> null,
+			'having'	=> null,
+			'limit'		=> null
+		);
+
+		return $this;
+	}
+
+	/**
+	 * Retrieve and parse Primary Key constant
+	 * 
+	 * To make this `function` work you need to add a `const pk` in you derieved model `class`
+	 *
+ 	 * @access	protected
+	 * @param	`void`
+	 * @return	`array`	-	Array of Primary Keys in case you have set `const pk`, otherwise returns `null`
+	 *
+	 */
 	protected function _get_pk () {
-		$klass = new ReflectionClass($this);
-		$pk = $klass->getConstant("pk");	
+		$class = new ReflectionClass($this);
+		$pk = $class->getConstant("pk");	
 
 		if ($pk) {
 			$pk = explode(",", $pk);
@@ -55,236 +101,548 @@ class MY_Model extends CI_Model {
 		return $pk;
 	}
 
+	/**
+	 * Retrieve and parse Auto Increment Key constant
+	 * 
+	 * To make this `function` work you need to add a `const ai` in you derieved model `class`
+	 *
+ 	 * @access	protected
+	 * @param	`void`
+	 * @return	`string`	-	Auto Increment column name in case you have set `const ai`, otherwise returns `null`
+	 *
+	 */
 	protected function _get_ai () {
-		$klass = new ReflectionClass($this);
-		return $klass->getConstant("ai");
+		$class = new ReflectionClass($this);
+		return $class->getConstant("ai");
 	}
 
-	protected function _get_fk () {
-		$klass = new ReflectionClass($this);
-		$fk = $klass->getConstant("fk");	
+	/**
+	 * Retrieve and parse Reference constant
+	 * 
+	 * To make this `function` work you need to add a `const ref` in you derieved model `class`
+	 *
+ 	 * @access	protected
+	 * @param	`void`
+	 * @return	`array`	Array of relations in case you have set `const ref`, otherwise returns `null`
+	 *
+	 */
+	protected function _get_refs () {
+		$class = new ReflectionClass($this);
+		$ref = $class->getConstant("ref");	
 
-		if ($fk) {
-			$fk = explode(",", $fk);
-			foreach ($fk as $key => $value) {
-				$act_fk = array();
-				$raw_fk = trim($value);
-				$raw_fk = explode(":", $value);
+		if ($ref) {
+			$ref = explode(",", $ref);
+			foreach ($ref as $key => $value) {
+				$act_ref = array();
+				$raw_ref = trim($value);
+				$raw_ref = explode(":", $value);
 
-				if (!count($raw_fk) == 2) continue;
+				if (!count($raw_ref) == 2) continue;
 
-				$act_fk['column'] = trim($raw_fk[0]);
-				$raw_fk_ref = explode(".", $raw_fk[1]);
+				$act_ref['column'] = trim($raw_ref[0]);
+				$raw_ref = explode(".", $raw_ref[1]);
 
-				if (!count($raw_fk_ref) == 2) continue;
+				if (!count($raw_ref) == 2) continue;
 
-				$act_fk['ref'] = array( "table" => trim($raw_fk_ref[0]), "column" => trim($raw_fk_ref[1]) );
+				$act_ref['ref'] = array( "table" => trim($raw_ref[0]), "column" => trim($raw_ref[1]) );
 
-				$fk[$key] = $act_fk;
+				$ref[$key] = $act_ref;
 			}
 		}
-		return $fk;
+		return $ref;
 	}
 	
+	/**
+	 * Start database transaction
+	 *
+	 * This `function` is used to start database transaction. It is not necessary to call `start_transaction` of same Model
+	 * on which you are performing database actions
+	 * E.g: model_a->start_transaction(); $model_b->save();
+	 *
+ 	 * @access	public
+	 * @param	`void`	
+	 * @return	`boolean`	`TRUE` in case transaction started, otherwise `FALSE`
+	 *
+	 */
 	public function start_transaction() {
-		$table = MY_Model::$table;
-		log_message("info", "[Model.$table] (start transaction)");
-		// return $this->db->query("start transaction;") ? true : false;
+		$table = $this->_get_table_name();
+		log_message("info", "[Model.$table] - (start transaction)");
+
 		return $this->db->trans_begin() ? true : false;
 	}
 	
+	/**
+	 * Commit database transaction
+	 *
+	 * This function is used to commit database transaction. It is not necessary to call commit_transaction of same Model
+	 * on which you performed database actions.
+	 * E.g: model_a->start_transaction(); $model_a->save(); $model_b->commit_transaction();
+	 *
+ 	 * @access	public
+	 * @param	`void`	
+	 * @return	`boolean`	-	`TRUE` in case transaction commited, otherwise `FALSE`
+	 *
+	 */
 	public function commit_transaction() {
-		$table = MY_Model::$table;
+		$table = $this->_get_table_name();
 		log_message("info", "[Model.$table] (commit transaction)");
-		// return $this->db->query("commit;") ? true : false;
+
 		return $this->db->trans_commit() ? true : false;
 	}
 	
+	/**
+	 * Rollback database transaction
+	 *
+	 * This `function` is used to rollback database transaction. It is not necessary to call `rollback_transaction` of same Model
+	 * on which you performed database actions.
+	 * E.g:
+	 * model_a->start_transaction(); $model_a->save(); $model_b->rollback_transaction();
+	 *
+ 	 * @access	public
+	 * @param	`void`	
+	 * @return	`boolean`	-	`TRUE` in case transaction rolled back, otherwise `FALSE`
+	 *
+	 */
 	public function rollback_transaction() {
-		$table = MY_Model::$table;
+		$table = $this->_get_table_name();
 		log_message("info", "[Model.$table] (rollback transaction)");
-		// return $this->db->query("rollback;") ? true : false;
+
 		return $this->db->trans_rollback() ? true : false;
 	}
-	
-	protected function get_sequence () {
-		$sequence = 1;
-		$table = MY_Model::$table;
-		
-		$query = "insert into sequence (table_name, sequence_num) values('$table', $sequence) ";
-		$query.= "on duplicate key update sequence_num = sequence_num + 1;";
-		
-		$seq_res = $this->db->query($query);
-		if($seq_res) {
-			$result = $this->find_one(array(
-						"from" => "sequence",
-						"where" => "table_name=?",
-						"values" => array($table)
-					));
-			$sequence = $result ? $result->sequence_num : 1;
-		}
-		
-		return $sequence;
-	}
-	
-	protected function get_shard ($id) {
-		return floor($id / 10000) + 1;
-	}
-	
-	protected function create_shard () {
-		$table = $this->_get_table_name();
-		$sequence = $this->find_one(array(
-					"from" => "sequence",
-					"where" => "table_name=?",
-					"values" => array($this->_get_table_name())
-				));
-		
-		if($sequence && isset($sequence->sequence_num)) {
-			$new_shard = $this->get_shard($sequence->sequence_num + 1);
-			if($new_shard > $sequence->shard_num) {
-				$new_shard = $table . "_shard_" . $new_shard;
-				
-				$db_responce = $this->db->query("create table $new_shard like $table;");
-				if($db_responce) {
-					$this->db->query("update sequence set shard_num=shard_num+1 where table_name='$table';");
-					return true;
-				}
+
+	/**
+	 * Set columns for search query
+	 *
+	 * `select` function is used to specify the columns to be selected from database. This `function`
+	 * itself don't execute the query. To execute see `find` function 
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function select ( ) {
+		if ( !func_num_args() )
+			throw new Exception("MY_Model::select requires column names as string arguments. At least 1 column is required", 1);
+
+		$this->query_settings['columns'] = array();
+		foreach (func_get_args() as $column) {
+			if ( is_string( $column ) ) {
+				$this->query_settings['columns'][] = $column;
 			} else {
-				log_message("info", "DoozieLabs: There is no need of new shard for table $table");
+				throw new Exception("MY_Model::select - accepts column names as string arguments. " . gettype($column) . " provided instead", 1);
 			}
 		}
-		
-		log_message("warn", "DoozieLabs: sequence not found for table $table");
-		return false;
+
+		return $this;
 	}
 
+	/**
+	 * Re-set columns for search query
+	 *
+	 * `reset_select` function is used to reset columns of search query to `*`
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function reset_select ( ) {
+		$this->query_settings['columns'] = array("*");
+
+		return $this;
+	}
+
+	/**
+	 * Set Table(s) for search query
+	 *
+	 * `select` function is used to specify the columns to be selected from database. This `function`
+	 * itself don't execute the query. To execute see `find` function 
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function from ( $table ) {
+		if ( is_string( $table ) ) {
+			$this->query_settings['table'] = $table;
+
+		} else {
+			throw new Exception("MY_Model::from - accepts table name(s) as a string argument", 1);
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Re-set Table(s) for search query
+	 *
+	 * `reset_select` function is used to reset the table value for search query. It revertes table name to the value set in `const table`
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function reset_from ( ) {
+		$this->query_settings['table'] = $this->_get_table_name();
+
+		return $this;
+	}
+
+	/**
+	 * Set where filter for search query
+	 *
+	 * `where` function is used to specify the condition according to which data is filtered 
+	 *
+ 	 * @access	public
+	 * @param	`string`	-	Condition query
+	 * @param	`mixed`		-	(optional) values for condition, can provide multiple values as different arguments
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function where ( $query ) {
+		$CI =& get_instance();
+		$CI->load->helper( 'array' );
+
+		$values = func_get_args();
+		unset( $values[0] );
+		$values = $this->_flatten_array( $values );
+
+		if ( ( count( explode( "?", $query ) ) - 1 ) == count( $values ) ) {
+
+			foreach($values as $value) {
+				if ( is_array( $value ) || is_object( $value ) ) {
+					throw new Exception("MY_Model::where - accepts values in string | numeric | NULL. " . gettype( $value ) . " provided instead.", 1);
+					
+				} else if (is_null($value)){
+					$value = "NULL";
+
+				} else {
+					$value = $this->db->escape( $value );
+
+				}
+				$query = substr_replace($query, $value, strpos($query, "?"), 1);
+			}
+			$this->query_settings['where'] .= $query;
+		} else {
+			throw new Exception("MY_Model::where - number of values does not match number of '?' in query", 1);
+			
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Prepares `where in` filter for search query
+	 *
+ 	 * @access	public
+	 * @param	`string`	-	Column name
+	 * @param	`array`		- 	Array of possible values
+	 * @return	`string`	-	Returns prepared string for `where in` condition. Pass this in `where` function to make it work.
+	 *							E.g: $model->where( $model->make_wherein( 'column_name', $values ), $values )->find(); 
+	 *
+	 */
 	public function make_wherein ($column, $values) {
-		$template = array_pad(array(), count($values), "?");
+		$CI =& get_instance();
+		$CI->load->helper( 'array' );
+
+		$template = array_pad(array(), count( $this->_flatten_array($values) ), "?");
 		return "$column in (" . implode(", ", $template) . ")"; 
 	}
-	
-	public function find ($options = array()) {
-		$load_refs	= ((is_bool($options) && $options === true) || (is_array($options) && isset($options['load_refs']) && $options['load_refs'] === true)) ? true : false;
-		$options	= is_array($options) ? $options : array();
-		$table		= $this->_get_table_name();
-		
-		if(!is_array($options)) {
-			log_message("error", "[Model.$table] (find) - Invalid arguments " . gettype($options) . " provided instead of array.");
-			$options = array();
-		}
-		
-		// SELECT
-		$query = "select ";
-		
-		// COLUMNS
-		if(isset($options['columns']) && is_array($options['columns'])) {
-			$query .= join(', ', $options['columns']) . " ";
-		} elseif (isset($options['columns']) && is_string($options['columns'])) {
-			$query .= $options['columns'];
-		} else {
-			$query .= "*";
-		}
-		
-		// FROM
-		if(isset($options['from']) && is_string($options['from'])) {
-			$table = $options['from'];
-		}
-		$query .= " from $table";
-		
-		
-		// WHERE
-		if(isset($options['where']) && is_string($options['where']) && isset($options['values']) && is_array($options['values'])) {
-			$where = $options['where'];
-			
-			if(count($options['values']) != count(explode("?", $options['where']))-1) {
-				log_message("error", "[Model.$table] (find) - Invalid where clause supplied in options.");
+
+	/**
+	 * Re-sets where condition for search query
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return 	`object`	-	Returns self
+	 *
+	 */
+	public function reset_where ( ) {
+		$this->query_settings['where'] = null;
+
+		return $this;
+	}
+
+	/**
+	 * Sets `group by` for search query 
+	 *
+ 	 * @access	public
+	 * @param	`string`	-	Column name with sorting order, can provide unlimited columns as different arguments
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function group ( ) {
+		if ( !func_num_args() )
+			throw new Exception("MY_Model::group requires column names as string arguments. At least 1 column is required", 1);
+
+		$this->query_settings['group'] = array();
+		foreach (func_get_args() as $column) {
+			if ( is_string( $column ) ) {
+				$this->query_settings['group'][] = $column;
 			} else {
-				foreach($options['values'] as $value) {
-					if(is_string($value)) {
-						// $value = "'" . $value . "'";
-					} else if (is_null($value)){
-						$value = "NULL";
-					}
-					$start = strpos($where, "?");
-					$where = substr_replace($where, $value, $start, 1);
-				}
-				$query .= " where " . $where;
+				throw new Exception("MY_Model::group - accepts column names as string arguments. " . gettype($column) . " provided instead", 1);
 			}
 		}
-		
+
+		return $this;
+	}
+
+	/**
+	 * Re-sets `group by` for search query
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return 	`object`	-	Returns self
+	 *
+	 */
+	public function reset_group ( ) {
+		$this->query_settings['group'] = null;
+
+		return $this;
+	}
+
+	/**
+	 * Set having filter for search query
+	 *
+	 * `having` function is used to specify the condition according to which grouped data is filtered 
+	 *
+ 	 * @access	public
+	 * @param	`string`	-	Condition query
+	 * @param	`mixed`		-	(optional) values for condition, can provide multiple values as different arguments
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function having ( $query ) {
+		$CI =& get_instance();
+		$CI->load->helper( 'array' );
+
+		$values = func_get_args();
+		unset( $values[0] );
+		$values = $this->_flatten_array( $values );
+
+		if ( ( count( explode( "?", $query ) ) - 1 ) == count( $values ) ) {
+
+			foreach($values as $value) {
+				if ( is_array( $value ) || is_object( $value ) ) {
+					throw new Exception("MY_Model::having - accepts values in string | numeric | NULL. " . gettype( $value ) . " provided instead.", 1);
+					
+				} else if (is_null($value)){
+					$value = "NULL";
+
+				} else {
+					$value = $this->db->escape( $value );
+
+				}
+				$query = substr_replace($query, $value, strpos($query, "?"), 1);
+			}
+			$this->query_settings['having'] .= $query;
+		} else {
+			throw new Exception("MY_Model::having - number of values does not match number of '?' in query", 1);
+			
+		}
+
+		return $this;
+	}
+	
+	/**
+	 * Re-sets having condition for search query
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return 	`object`	-	Returns self
+	 *
+	 */
+	public function reset_having ( ) {
+		$this->query_settings['having'] = null;
+
+		return $this;
+	}
+
+	/**
+	 * Set data sorting order for search query
+	 *
+ 	 * @access	public
+	 * @param	`string`	-	column names with sorting order. can provide multiple columns as different arguments
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function order ( ) {
+		$arguments = func_get_args();
+		if ( !func_num_args() ) {
+			throw new Exception("MY_Model::order - accepts {string} arguments. At least 1 argument is required", 1);
+		}
+
+		$this->query_settings['order'] = array();
+		foreach ($arguments as $column) {
+			if ( is_string( $column ) ) {
+				$this->query_settings['order'][] = $column;
+			} else {
+				$this->reset_order();
+				throw new Exception("MY_Model::order - accepts column names as string arguments. {" . gettype($column) . "} provided instead", 1);
+			}
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Re-set data sorting for search query
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`object`	- Returns self
+	 *
+	 */
+	public function reset_order ( ) {
+		$this->query_settings['order'] = null;
+
+		return $this;
+	}
+
+	/**
+	 * Set row limits on search query
+	 *
+ 	 * @access	public
+	 * @param	`int`		-	In case of 2 arguments, starting position, otherwise number of rows
+	 * @param	`int`		-	(optional) Number of rows
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function limit ( $skip, $numrows = null ) {
+		if ( func_num_args() > 2 ) {
+			throw new Exception("MY_Model::limit - accepts at max 2 {int} arguments. Argument 1 is required", 1);
+		} elseif ( !is_numeric($skip) ) {
+			throw new Exception("MY_Model::limit - accepts Argument 1 as {int}. {" . gettype($skip) . "} provided instead", 1);
+		} elseif ( !is_numeric($numrows) && !is_null($numrows) ) {
+			throw new Exception("MY_Model::limit - accepts optional Argument 2 as {int}. {" . gettype($skip) . "} provided instead", 1);
+		}
+			
+		$this->query_settings['limit'] = implode(", ", func_get_args());
+
+		return $this;
+	}
+
+	/**
+	 * Re-set row limits on search query
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`object`	- Returns self
+	 *
+	 */
+	public function reset_limit ( ) {
+		$this->query_settings['limit'] = null;
+
+		return $this;
+	}
+
+	/**
+	 * Find Results / Execute search query
+	 *
+ 	 * @access	public
+	 * @param	`boolean`	-	Load references of result rows, see `function` `load_refs` for detail
+	 * @param	`boolean`	-	Specify the resulting object type, if it is set to `true`, resulting rows will be the object 
+	 *							of same `class` as your model. In case of `false`, `function` find check if you have sepecified any
+	 *							other table to select data from, in that case, resulting rows will be unknown object. Otherwise
+	 *							result will be same as in case of `true`
+	 * @return	`array`		-	In case of successful execution, Array of resulting rows, otherwise empty array
+	 *
+	 */
+	public function find ( $load_refs = false, $same_obj = false ) {
+		$table = $this->_get_table_name();
+		log_message("debug", "[Model.$table] (find) - Process started");
+
+		$query = "SELECT ";
+
+		// COLUMNS
+		if ( $this->query_settings['columns'] ) {
+			$query.= implode(", ", $this->query_settings['columns']);
+
+		} else {
+			throw new Exception("MY_Model::find - columns not set", 1);
+			
+		}
+
+		// FROM
+		$this->query_settings['table'] = $this->query_settings['table'] ? $this->query_settings['table'] : $table;
+		$query .= " FROM " . $this->query_settings['table'];
+
+		// WHERE
+		if ( $this->query_settings['where'] )
+			$query .= " WHERE " . $this->query_settings['where'];
+
 		// GROUP BY
-		if(isset($options['group']) && is_string($options['group'])) {
-			$query .= " group by " . $options['group'];
+		if( $this->query_settings['group'] ) {
+			$query .= " GROUP BY " . implode(", ", $this->query_settings['group']);
 		}
 
 		// HAVING
-		if(isset($options['having']) && is_string($options['having'])) {
-			$query .= " having " . $options['having'];
+		if( $this->query_settings['having'] ) {
+			$query .= " HAVING " . $this->query_settings['having'];
 		}		
 
 		// ORDER BY
-		if(isset($options['order']) && is_string($options['order'])) {
-			$query .= " order by " . $options['order'];
+		if( $this->query_settings['order'] ) {
+			$query .= " ORDER BY " . implode(", ", $this->query_settings['order']);
 		}
 		
 		// LIMIT
-		if(isset($options['limit']) && (is_string($options['limit']) || is_int($options['limit']))) {
-			$query .= " limit " . $options['limit'];
-		} elseif(isset($options['limit']) && is_array($options['limit']) && count($options['limit']) == 2) {
-			$query .= " limit " . join(", ", $options['limit']);
+		if( $this->query_settings['limit'] ) {
+			$query .= " LIMIT " . $this->query_settings['limit'];
 		}
-		
+
 		$query .= ";";
-		
-		log_message("info", "[Model.$table] (find) - $query");
-		
-		$db_responce = $this->db->query($query);
-		// print_r($this->get_error_message());
-		// print_r($db_responce->result());
-		$results = $db_responce->result(($table == $this->_get_table_name() || (isset($options['same_obj']) && $options['same_obj'])) ? get_class($this) : "object");
 
-		if ( ($table == $this->_get_table_name() || (isset($options['same_obj']) && $options['same_obj'])) && $load_refs && $fks = $this->_get_fk() ) {
-			foreach ($results as $key => $row) {
-				$results[$key]->ref = array();
-				foreach ($fks as $fk) {
-					if ( !isset( $results[$key]->$fk['column'] ) ) continue;
-					$fk_col		= $fk['column'];
-					$ref_table	= $fk['ref']['table'];
-					$ref_col	= $fk['ref']['column'];
+		log_message('debug', "[Model.$table] (find) - Query: $query");
 
-					$CI =& get_instance();
-					$CI->load->model( $ref_table, $ref_table, true );
-					$results[$key]->ref["{$fk_col}:{$ref_table}"] = $CI->$ref_table->find( array (
-							"where"		=> "{$ref_col} = ?",
-							"values"	=> array($results[$key]->$fk_col)
-						)
-					);
+		$results = array();
+		if ( $db_responce = $this->db->query($query) ) {
+			$results = $db_responce->result(($table == $this->query_settings['table'] || $same_obj) ? get_class($this) : "object");
+			if ( is_array( $results ) && $load_refs ) {
+				log_message('debug', "[Model.$table] (find) - Loading References");
 
+				foreach ($results as $result) {
+					if ( is_subclass_of($result, "MY_Model") )
+						$result->load_refs();
 				}
 			}
+			if ( !$results ) $results = array();
+
+		} else {
+			log_message('debug', "[Model.$table] (find) - Error: " . $this->get_error_message());
 		}
 
+		$this->reset_query();
 		return $results;
 	}
 
+	/**
+	 * Loads References
+	 *
+	 * This `function` works only if you have specified `const ref` in your derived model. See ReadMe.md for details
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`boolean`	-	`true` in case of References are loaded. Otherwise `false`
+	 *
+	 */
 	public function load_refs ( ) {
 		
-		if ( $fks = $this->_get_fk() ) {
+		if ( $refs = $this->_get_refs() ) {
 			$this->ref = array();
-			foreach ($fks as $fk) {
-				if ( !isset( $this->$fk['column'] ) ) { continue; };
-
-				$fk_col		= $fk['column'];
-				$ref_table	= $fk['ref']['table'];
-				$ref_col	= $fk['ref']['column'];
+			foreach ($refs as $ref) {
+				$ref_col		= $ref['column'];
+				$ref_table		= $ref['ref']['table'];
+				$ref_table_col	= $ref['ref']['column'];
+				
+				if ( !isset( $this->$ref_col ) ) continue;
 
 				$CI =& get_instance();
 				$CI->load->model( $ref_table, $ref_table, true );
-				$this->ref["{$fk_col}:{$ref_table}"] = $CI->$ref_table->find( array (
-						"where"		=> "{$ref_col} = ?",
-						"values"	=> array($this->$fk_col)
-					)
-				);
+				$this->ref["{$ref_col}:{$ref_table}"] = $CI->$ref_table->where("{$ref_table_col} = ?", $this->$ref_col)->find();
 
 			}
 			return true;
@@ -292,26 +650,37 @@ class MY_Model extends CI_Model {
 		return false;
 	}
 	
-	public function find_one ($options = array()) {
-		$load_refs	= ((is_bool($options) && $options === true) || (is_array($options) && isset($options['load_refs']) && $options['load_refs'] === true)) ? true : false;
-		$options	= is_array($options) ? $options : array();
-		if ( $load_refs ) {
-			$options['load_refs'] = true;
-		}
-
-		$options["limit"] = 1;
-		
-		$result = $this->find($options);
+	/**
+	 * Finds a single result
+	 *
+	 * Same as `find`, but it just returns single row
+	 *
+ 	 * @access	public
+	 * @param	`boolean`		- See `find` for datail
+	 * @param	`boolean`		- See `find` for derial
+	 * @return	`mixed`			- In case of successful search, returns `object`, otherwise `false`
+	 *
+	 */
+	public function find_one ($load_refs = false, $same_obj = false) {
+		$result = $this->limit(1)->find($load_refs, $same_obj);
 		if($result && is_array($result) && count($result)) {
-			$result = $result[0];
-		} else {
-			$result = false;
+			return $result[0];
 		}
 		
-		return $result;
+		return false;
 	}
 
-	public function copy ($object) {
+	/**
+	 * Copy model object
+	 *
+	 * Will copy only if provided object is a same model.
+	 *
+ 	 * @access	private
+	 * @param	`object`	-	model object to copy
+	 * @return	`boolean`	-	`true` in case of successful copy, othewise `false`
+	 *
+	 */
+	private function copy ($object) {
 		$copied = false;
 		if ($object instanceof self) {
 			$object_array = (array) $object;
@@ -327,26 +696,39 @@ class MY_Model extends CI_Model {
 		return $copied;
 	}
 
-	public function load ($options = array()) {
-		$copied = false;
-
-		$load_refs	= ((is_bool($options) && $options === true) || (is_array($options) && isset($options['load_refs']) && $options['load_refs'] === true)) ? true : false;
-		$options	= is_array($options) ? $options : array();
-		if ( $load_refs === true ) {
-			$options['load_refs'] = true;
-		}
-		$options["same_obj"] = true;
-		
-		$object = $this->find_one($options);
+	/**
+	 * Loads search result in it self, instead of returning it
+	 *
+	 * Same as `find_one`, it jsut don't return result, but loads in requesting model
+	 *
+ 	 * @access	public
+	 * @param	`boolean`	-	See `find` for detail
+	 * @param	`boolean`	-	See `find` for detail
+	 * @return	`boolean`	-	`true` in case of successful loading, otherwise `false`
+	 *
+	 */
+	public function load ( $load_refs = false, $same_obj = false ) {
+		$loaded = false;
+		$object = $this->find_one( $load_refs, $same_obj );
 		if ($object) {
-			$copied = $this->copy($object);
+			$loaded = $this->copy($object);
 		}
 
-		return $copied;
+		return $loaded;
 	}
 	
-	public function count ($options = array()) {
-		$result = $this->find($options);
+	/**
+	 * Count resulting rows
+	 *
+	 * Same as find, it just don't return result, but returns count of resulting rows
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @param	`int`	Count of resulting rows
+	 *
+	 */
+	public function count () {
+		$result = $this->find();
 		if($result && is_array($result) && count($result)) {
 			return count($result);
 		}
@@ -354,10 +736,24 @@ class MY_Model extends CI_Model {
 		return 0;
 	}
 	
-	public function save ( $update = false ) {
+	/**
+	 * Save Changes in Model
+	 *
+	 * This `function` is used for both, insert and update. Will automatically detect either it has tp
+	 * be inserted or is a new entry. To make this function work properly. You need to add `const pk`
+	 * in your model
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`mixed`	-	If table has `auto_increment` pk, it will return value of auto_increment key
+	 *						on insert. Otherwise `true` in case of successful execution, else `false`
+	 *
+	 */
+	public function save ( ) {
 		$vars = get_object_vars($this);
 		$table = $this->_get_table_name();
-		
+		$saved = false;
+
 		$data = array();
 		foreach( $vars as $key => $value ) {
 			if ( is_array($value) || is_object( $value ) ) {
@@ -390,10 +786,8 @@ class MY_Model extends CI_Model {
 				}
 				
 				if ($where && $values) {
-					$row_exists = $this->count( array (
-						"where" => implode(" and ", $where),
-						"values" => $values
-					) ) ? true : false;
+					$this->reset_query();
+					$row_exists = $this->where(implode(" and ", $where), $values)->count() ? true : false;
 				}
 
 				log_message('debug', "[Model.$table] (save) - row result = " . ($row_exists ? 'yes' : 'no'));
@@ -401,104 +795,52 @@ class MY_Model extends CI_Model {
 			}
 			if ( $row_exists ) {
 				log_message('debug', "[Model.$table] (save) - updating");
-				return $this->db->update( $this->_get_table_name(), $data, $pk_vals);
-
-			} elseif ( !$row_exists &&  $this->db->insert( $this->_get_table_name( ), $data ) ) {
-				$insert_id = $this->db->insert_id( );
-				if ( $ai = $this->_get_ai() ) {
-					$this->$ai = $insert_id;
+				$saved = $this->db->update( $this->_get_table_name(), $data, $pk_vals);
+				log_message('debug', "[Model.$table] (save) - Query: " . $this->db->last_query());
+				if ( !$saved ) {
+					log_message('debug', "[Model.$table] (save) - Error: " . $this->get_error_message() );
 				}
-				log_message('debug', "[Model.$table] (save) - insert_id = $insert_id");
-	 			return $insert_id ? $insert_id : true;
 
 			} else {
-				return false;
+				log_message('debug', "[Model.$table] (save) - Inserting");
+				$saved = $this->db->insert( $this->_get_table_name( ), $data ); 
+				log_message('debug', "[Model.$table] (save) - Query: " . $this->db->last_query());
+				
+				if ( $saved ) {
+					$insert_id = $this->db->insert_id( );
+					if ( $ai = $this->_get_ai() ) {
+						$this->$ai = $insert_id;
+					}
+					log_message('debug', "[Model.$table] (save) - insert_id = $insert_id");
+		 			return $insert_id ? $insert_id : true;
+				} else {
+					log_message('debug', "[Model.$table] (save) - Error: " . $this->get_error_message() );
+					return false;
+				}
 			}
 		} catch (Exception $e) {
 			log_message("info", "[Model.$table] (save) - catch: " . print_r($e, true));
 			return false;
 		}
-		log_message("info", "[Model.$table] (save) - error: " . $this->db->_error_message());
 
+		log_message("info", "[Model.$table] (save) - error: " . $this->db->_error_message());
 		return false;
 	}
-
-	public function save_unsafe ($duplicate=false) {
-		$vars = get_object_vars($this);
-		$table = $this->_get_table_name();
-		
-		$data = array();
-		foreach($vars as $key=>$value) {
-			if (is_array($value) || is_object($value)) {
-				continue;
-				
-			} else if(is_string($vars[$key])) {
-				$data[$key] = "'" . $value . "'";
-				
-			} else if(is_numeric($vars[$key])) {
-				$data[$key] = $value;
-				
-			} else if(is_null($vars[$key])) {
-				$data[$key] = 'NULL';
-				
-			}
-		}
-		
-		// INSERT INTO TABLE (COLUMN[, ...]) VALUES (VALUE[, ...])
-		$query = "insert into " . $this->_get_table_name() . " (" . implode(",", array_keys($data)) . ") values (" . implode(",", array_values($data)) . ")";
-		
-		// ON DUPLICATE KEY UPDATE
-		if($duplicate) {
-			$query .= " on duplicate key update ";
-			$update = array();
-			
-			// COLUMN=VALUE[, ...]
-			foreach($data as $key=>$value) {
-				if($key == 'id' || $value . "" == 'NULL' || is_array($value) || is_object($value)) continue;
-				
-				array_push($update, $key . "=" . $value);
-			}
-			$query .= implode(", ", $update);
-		}
-		
-		log_message("info", "[Model.$table] (save) - $query");
-		
-		$db_responce = $this->db->query($query);
-		return $db_responce ? true : false;
-	}
 	
-	public function update_unsafe () {
-		$table = $this->_get_table_name();
-		$vars = get_object_vars($this);
-		
-		// UPDATE TABLE SET
-		$query = "update $table set ";
-		$update = array();
-		
-		// COLUMN=VALUE[, ...]
-		foreach($vars as $key=>$value) {
-			if (is_array($value) || is_object($value)) {
-				continue;
-				
-			} else if(is_string($vars[$key])) {
-				array_push($update, $key . "='" . $value . "'");
-				
-			} else if(!is_null($vars[$key])) {
-				array_push($update, $key . "=" . $value);
-				
-			}
-		}
-		$query .= implode(', ', $update);
-		
-		log_message("info", "[Model.$table] (update) - $query");
-		
-		$db_responce = $this->db->query($query);
-		return $db_responce ? true : false;
-	}
-	
-	public function delete($where=array()) {
-		$table = $this->_get_table_name();
-		$vars = get_object_vars($this);
+	/**
+	 * Delete Row
+	 *
+ 	 * @access	public
+	 * @param	`string`	-	(optional) Column name, by value of which you want to delete rows. Can specify multiple columns as different arguments
+	 *							If no arguments are provided, uses `const pk` to delete row
+	 * @return	`boolean`	-	`true` in case of successful deletion, otherwise `false`
+	 *
+	 */
+	public function delete( ) {
+		$args	= func_get_args();
+		$where	= count($args) ? $args : $this->_get_pk();
+		$table	= $this->_get_table_name();
+		$vars	= get_object_vars($this);
 		
 		foreach ($where as $key=>$column) {
 			$where[$key] = "$column=$vars[$column]";
@@ -513,7 +855,17 @@ class MY_Model extends CI_Model {
 		return $db_responce ? true : false;
 	}
 	
-	public function delete_all() {
+	/**
+	 * Clean Table
+	 *
+	 * Deletes all rows from the model table
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`boolean`	-	`true` in case of successful deletion, otherwise `false`
+	 *
+	 */
+	public function clean_table() {
 		$table = $this->_get_table_name();
 		$query = "delete from $table";
 		
@@ -523,8 +875,51 @@ class MY_Model extends CI_Model {
 		return $db_responce ? true : false;
 	}
 
+	/**
+	 * Get error messages of query
+	 *
+	 * Returns error message of last executed query, if any
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @return	`string`	-	Error message of last executed query, if any
+	 *
+	 */
 	public function get_error_message () {
 		return $this->db->_error_message();
+	}
+
+	public function strip_props( ) {
+		$strip	= array_merge( array( "query_settings" ), func_get_args() );
+		$props	= get_object_vars($this);
+
+		foreach ($strip as $strip_prop) {
+			if ( isset($props[$strip_prop]) )
+				unset( $props[$strip_prop] );
+		}
+
+		if ( isset( $props['ref'] ) ) {
+			foreach ($props['ref'] as $ref => $ref_array) {
+				foreach ($ref_array as $key => $ref_obj) {
+					$props['ref'][$ref][$key] = $ref_obj->strip_props();
+				}
+			}
+		}
+
+		return (object) $props;
+	}
+
+	private function _flatten_array( $array ) {
+			return array_reduce( $array, array(get_class($this), "_recursive_flatten_array"), array());	
+	}
+
+	private function _recursive_flatten_array ( $carry, $item ) {
+		if ( is_array( $item ) )
+			$carry = array_merge($carry, array_reduce( $item, array(get_class($this), "_recursive_flatten_array"), array() ) );
+		else
+			$carry[] = $item;
+
+		return $carry;
 	}
 }
 // END Model Class
