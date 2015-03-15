@@ -703,7 +703,7 @@ class MY_Model extends CI_Model {
 
 				$CI =& get_instance();
 				$CI->load->model( $ref_table, $ref_table, true );
-				$this->ref["{$ref_col}:{$ref_table}"] = $CI->$ref_table->where("{$ref_table_col} = ?",  $this->columns[$ref_col])->find();
+				$this->ref["{$ref_col}:{$ref_table}.{$ref_table_col}"] = $CI->$ref_table->where("{$ref_table_col} = ?",  $this->columns[$ref_col])->find();
 
 			}
 			return true;
@@ -965,35 +965,46 @@ class MY_Model extends CI_Model {
 		return $this->db->_error_message();
 	}
 
-	public function export( ) {
-		$strip	= array_merge( array( "query_settings" ), func_get_args() );
-		$props	= get_object_vars($this);
+	/**
+	 * Export columns and references of model
+	 *
+	 * This function allows to export model data, without exposing all its functionalities.
+	 * It also allows to stip any speicified columns
+	 *
+	 * @access	public
+	 * @param	`string`	-	Can provide multiple columns names, as different arguments, to stip from the exported object.
+	 * @param	`object`	-	Resulting export object, after stripping specified columns
+	 *
+	 */
+	public function export( /* $... */ ) {
+		$strip_columns	= func_get_args();
+		$export			= array();
 
-		var_dump($props);
-		foreach ($strip as $strip_prop) {
-			echo $strip_prop .", ";
-			if ( isset($props[$strip_prop]) ) {
-				unset( $props[$strip_prop] );
-				echo 'done|';
-			}
-			else
-				echo 'fail|';
-
+		foreach ($this->columns as $column => $value) {
+			if ( array_search($column, $strip_columns) === false )
+				$export[$column] = $value;
 		}
-		echo "<br>";
-
-		if ( isset( $props['ref'] ) ) {
-			foreach ($props['ref'] as $ref => $ref_array) {
-				foreach ($ref_array as $key => $ref_obj) {
-					$props['ref'][$ref][$key] = $ref_obj->export();
+		
+		if ( isset( $this->ref ) && is_array( $this->ref ) ) {
+			foreach ($this->ref as $ref => $ref_results) {
+				foreach ($ref_results as $key => $ref_obj) {
+					if ( $ref_obj instanceof MY_Model )
+						$export['ref'][$ref][$key] = $ref_obj->export();
 				}
 			}
 		}
-
-		return (object) $props;
+		return (object) $export;
 	}
 
-	
+	/**
+	 * Allows to get the loaded references
+	 *
+	 * @access	public
+	 * @param	`string`	-	(optional) Single Reference, as defined in `const ref`
+	 * @param	`int`		-	(optional) Index number of Reference object
+	 * @return	`mixed`		-	In case of no parameters, returns complete array of all references. Incase of 1 Parameter, returns array of the provided reference. In case of 2 Parameters, returns Object of the provided reference (if exists). if not found queried reference, returns `null`
+	 *
+	 */
 	public function get_ref( $ref = null, $ref_ind = null ) {
 		if ( $ref ) {
 			if ( isset( $this->ref, $this->ref[$ref] ) ) {
@@ -1002,18 +1013,47 @@ class MY_Model extends CI_Model {
 						: $this->ref[$ref] );
 			}
 			
-		} else if ( isset( $this->ref ) ) {
+		} else if ( isset( $this->ref ) && is_array($this->ref) ) {
 			return $this->ref;
 			
 		}
 		return null;
 	}
 
+	/**
+	 * Displays undefined function call error
+	 *
+	 * @access	private
+	 * @param	`string`	-	Name of called function
+	 * @return	`void`
+	 *
+	 */
 	private function _undefined_func_exception ($func) {
 		throw new Exception("Call to undefined function '$func' on " . get_class($this) . " Model", 1);
 
 	}
 
+	/**
+	 * Helper function to flatten array
+	 *
+	 * @access	private
+	 * @param	`array`	-	array to flatten
+	 * @return	`array`	-	Resulting array
+	 *
+	 */
+	private function _flatten_array( $array ) {
+			return array_reduce( $array, array(get_class($this), "_recursive_flatten_array"), array());	
+	}
+
+	/**
+	 * Helper function to flatten array
+	 *
+	 * @access	private
+	 * @param	`array`	-	fallten portion (carry) of provided array
+	 * @param	`array`	-	array to flatten
+	 * @return	`array`	-	Resulting array
+	 *
+	 */
 	private function _recursive_flatten_array ( $carry, $item ) {
 		if ( is_array( $item ) )
 			$carry = array_merge($carry, array_reduce( $item, array(get_class($this), "_recursive_flatten_array"), array() ) );
@@ -1023,6 +1063,14 @@ class MY_Model extends CI_Model {
 		return $carry;
 	}
 
+	/**
+	 * Casts resulting array of search query items to the model object
+	 *
+	 * @access	private
+	 * @param	`array`		-	Array of search query result item
+	 * @return	`object`	-	Casted object
+	 *
+	 */
 	private function _cast ( $array ) {
 		$class = get_class($this);
 		$data = 'O:'.strlen($class).':"'.$class.'":1:{s:10:"' . chr(0).'*'.chr(0) . 'columns";'.serialize($array).'}';
@@ -1032,6 +1080,15 @@ class MY_Model extends CI_Model {
 		return $model_object;
 	}
 
+	/**
+	 * Sets values of columns
+	 *
+	 * @access	private
+	 * @param	`string`	-	column name
+	 * @param	`mixed`		-	value of column
+	 * @return	`void`
+	 *
+	 */
 	private function _set_prop ( $prop, $value ) {
 		if ( array_key_exists($prop, $this->columns ) )
 			$this->columns[$prop] = $value;
@@ -1039,6 +1096,14 @@ class MY_Model extends CI_Model {
 			$this->_undefined_func_exception("set_$prop");
 	}
 
+	/**
+	 * Gets values of columns
+	 *
+	 * @access	private
+	 * @param	`string`	-	column name
+	 * @return	`mixed`		-	value of column
+	 *
+	 */
 	private function _get_prop ( $prop ) {
 		if ( array_key_exists($prop, $this->columns ) )
 			return $this->columns[$prop];
@@ -1047,7 +1112,7 @@ class MY_Model extends CI_Model {
 	}
 
 	/**
-	 * 
+	 * Allows to generate dynamic getters and setters for model columns
 	 *
 	 * @see	http://php.net/manual/en/language.oop5.overloading.php#object.call
 	 */
@@ -1066,20 +1131,31 @@ class MY_Model extends CI_Model {
 		}
 	}
 
+	/**
+	 * 
+	 *
+	 * @see http://php.net/manual/en/language.oop5.magic.php#object.tostring
+	 */
 	public function __toString() {
-		return json_encode($this->strip_props(), true);
+		return json_encode($this->export(), true);
 	}
 
+	/**
+	 * Alternate of `find()`
+	 *
+	 * @see http://php.net/manual/en/language.oop5.magic.php#object.invoke
+	 */
 	public function __invoke( $load_refs = false, $same_obj = false ) {
 		return $this->find( $load_refs, $same_obj );
 	}
 
+	/**
+	 *
+	 *
+	 * @see http://php.net/manual/en/language.oop5.magic.php#object.debuginfo
+	 */
 	public function __debugInfo() {
 		return array_merge(get_object_vars($this), array( "last_db_error" => $this->get_error_message() ));
-	}
-
-	private function _flatten_array( $array ) {
-			return array_reduce( $array, array(get_class($this), "_recursive_flatten_array"), array());	
 	}
 }
 // END Model Class
