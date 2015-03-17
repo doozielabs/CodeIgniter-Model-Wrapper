@@ -329,7 +329,6 @@ In this section, a brief description of each MY_Model `function` is provided.
 			class CI_Model_Test_Controller extends CI_Controller {
 				
 				public function index() {
-					$values = array('thomas', 'james', 'clark', 'hanks');
 					$this->load->model('user', null, true);
 					$this->user
 						->select('email')
@@ -531,8 +530,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 				[0]	=> User Object
 					(
 						[id] => 123
-						[name] => Tom Hanks
-						[email] => tom.hanks@doozielabs.com
+						[name] => Hassan Abbasi
+						[email] => hassan.abbasi@doozielabs.com
 						[username] => hanks
 						[password] => abc1234
 					)
@@ -565,9 +564,9 @@ In this section, a brief description of each MY_Model `function` is provided.
 				[0]	=> User Object
 					(
 						[id] => 123
-						[name] => Methew Thomas
-						[email] => methew.thomas@doozielabs.com
-						[username] => methomas
+						[name] => Hassan Abbasi
+						[email] => hassan.abbasi@doozielabs.com
+						[username] => hassanabbasi
 						[password] => abc1234
 						[ref] => Array
 								(
@@ -642,8 +641,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 			)
@@ -674,8 +673,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 				[ref] => Array
@@ -745,8 +744,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 			)
@@ -777,8 +776,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 				[ref] => Array
@@ -849,16 +848,16 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 			)
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 				[ref] => Array
@@ -976,6 +975,115 @@ In this section, a brief description of each MY_Model `function` is provided.
 			(
 				[id] => 13
 				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923337654321
+			)
+			```
+
+	14. ### Magical Getter Functions
+	`Magical Getter` doesn't sounds like a function name? Yes it is not a function. CI Model Wrapper supports dynamically generated getter functions against
+	columns of your model. Sounds magical? thats why we call it Magical Getter.
+
+		Why do we need these Magical Getters? Answer is simple as our column binding is defined as protected. We should have some way to retrieve the column values.
+		So here comes the Magical Getters.
+
+		1. #### Description
+			```php
+			mixed get_<column_name>( )
+			```
+
+			The signature of these Magical Functions have 2 parts.
+
+				1. get_
+				2. <column_name>
+
+			The 1st part `get_` indicates that a Magical Getter function is being called. And the other part `<column_name>` is the name of your column you 
+			want to retrieve.
+
+			**_Be carefull!_ we also do have a `get_ref()` function. So you should not name any of your columns as `ref`. Otherwise _Magical Getter_ function for 
+			that column will not work at all, And you might have to write your own function, in your model, to get its value**
+
+		2. #### Parameters
+			- No parameters
+
+		3. #### Return Values
+			Returns the value stored in your binded column
+
+		4. #### Examples
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+					$this->user->where('id = ?', 13)->load();
+
+					echo $this->user->get_id() . "<br/>";
+					echo $this->user->get_name() . "<br/>";
+					echo $this->user->get_email() . "<br/>";
+				}
+
+			}
+			```
+
+			Output will be like:
+			```
+			13
+			Hassan
+			hassan.abbasi@doozielabs.com
+			```
+
+	15. ### Magical Setter Functions
+	Magical Setter` functions are similar to the Magical Getters. These functions are used to set the model column values.
+
+		1. #### Description
+			```php
+			void set_<column_name>( mixed $value )
+			```
+
+			The signature of these Magical Functions have 2 parts.
+			
+				1. set_
+				2. <column_name>
+
+			The 1st part `set_` indicates that a Magical Setter function is being called. And the other part `<column_name>` is the name of your column you 
+			want to change the value of.
+
+		2. #### Parameters
+			##### `$value`
+			- New value to replace with existing one.
+
+		3. #### Return Values
+			- `null`
+
+		4. #### Examples
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+					$this->user->where('id = ?', 13)->load();
+
+					print_r($this->user);
+					$this->user->set_name( 'Hassan Abbasi' );
+					print_r($this->user);
+				}
+
+			}
+			```
+
+			Output will be like:
+			```
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923337654321
+			)
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan Abbasi
 				[email] => hassan.abbasi@doozielabs.com
 				[phone] => 923337654321
 			)
