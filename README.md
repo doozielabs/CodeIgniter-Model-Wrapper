@@ -20,7 +20,7 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 			const table = 'users';
 			const pk    = 'id';
 			const ai    = 'id';
-			const ref   = 'id:History.user_id';
+			const ref   = 'id:History.user_id,id:Order.user_id';
 		}
 		```
 	4. Add columns of your table as `property` of your model `class`
@@ -34,10 +34,12 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 			const ref   = 'id:History.user_id';
 			
 			/* Column Binding */
-			var $id;
-			var $username;
-			var $email;
-			var $password;
+			protected $columns = array(
+				'id'		=> null,
+				'username'	=> null,
+				'email'		=> null,
+				'password'	=> null
+			);
 		}
 		```
 	5. If you want to add `__construct` in your model, its first line should be `parent::__construct()`
@@ -51,17 +53,19 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 			const ref   = 'id:History.user_id';
 			
 			/* Column Binding */
-			var $id;
-			var $username;
-			var $email;
-			var $password;
-			var $picture;
+			protected $columns = array(
+				'id'		=> null,
+				'username'	=> null,
+				'email'		=> null,
+				'password'	=> null
+				'picture'	=> null
+			);
 			
 			/* Public Constructor */
 			public function __construct ( ) {
 				parent::__construct();
 				
-				$this->picture = 'some default value'; 
+				$this->columns['picture'] = $this->some_value_from_some_spooky_function(); 
 			}
 		}
 		```
@@ -805,14 +809,14 @@ In this section, a brief description of each MY_Model `function` is provided.
 
 		1. #### Description
 			```php
-			boolean load_refs( )
+			boolean load_refs( [string $ref] )
 			```
 
-			Executes the query built from above mentioned **_Query Builder_** functions.
-			This function finds and loads references of current loaded values of model.
+			If $ref is defined, load that reference. Otherwise loads the references defined in `const ref`
 
 		2. #### Parameters
-			- No parameters
+			##### `$ref`
+			- Optional parameter. If defined, `load_refs()` function will load only that reference.
 
 		3. #### Return Values
 			Returns `true` in case of successful loading. Otherwise returns `false`
@@ -884,5 +888,95 @@ In this section, a brief description of each MY_Model `function` is provided.
 											...
 										)
 						)
+			)
+			```
+
+	13. ### Function `save()`
+	This is a **_Query Executer_** `function`, and is used to save the changes in your model object.
+
+		1. #### Description
+			```php
+			mixed save( )
+			```
+
+			Saves the changes in your model object. `save()` function automatically detects (using primary key constant), whether the object has to to be inserted 
+			or it is an update to an existing row. To make this function work as expected, you need to define `const pk`.
+			See how to define `const pk` in [Creating Models](#creating-models "Creating Models")
+
+			If you have defined `const ai` in your model, and you have inserting a new object, `save()` function will set the `auto_increment` value to the defined `ai` column.
+
+		2. #### Parameters
+			- No parameters
+
+		3. #### Return Values
+			Returns `auto_increment` value, in case of new item is saved and have an auto_increment column. Otherwise returns `true` on success and `false` on failure.
+
+		4. #### Examples
+			##### Insert Example
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					// Assuming that User model have defined `const pk = 'id';` and `const ai = 'id';`
+					$this->user->set_name("Hassan");
+					$this->user->set_email("hassan.abbasi@doozielabs.com");
+					$this->user->set_phone("923331234567");
+
+					echo $this->user->save();
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			```sql
+			INSERT INTO users (id, name, email, phone) VALUES (NULL, 'Hassan', 'hassan.abbasi@doozielabs.com', '923331234567');
+			```
+
+			Output will be like:
+			```
+			13
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923331234567
+			)
+			```
+
+			##### Update Example
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					// Assuming that User model have defined `const pk = 'id';` and `const ai = 'id';`
+					$this->user->where('id = ?', 13)->load();
+					$this->user->set_phone("923337654321");
+
+					echo $this->user->save() ? 'saved' : 'not saved';
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			```sql
+			UPDATE TABLE users SET id = 13, name = 'Hassan', email = 'hassan.abbasi@doozielabs.com', phone = '923337654321' WHERE id = 13;
+			```
+
+			Output will be like:
+			```
+			saved
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923337654321
 			)
 			```
