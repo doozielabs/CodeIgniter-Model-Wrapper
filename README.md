@@ -1195,9 +1195,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			}
 			```
 			Resulting MySQL query:
-			```sql
-			DELETE users WHERE type = 'general';
-			```
+			This will not generate MySQL Query!
 
 			Output will be like:
 			```
