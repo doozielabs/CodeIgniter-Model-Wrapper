@@ -1178,3 +1178,36 @@ In this section, a brief description of each MY_Model `function` is provided.
 				[phone] => 923331234567
 			)
 			```
+
+			##### Delete via nothing supplied and `const pk` not defined
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					$this->user->where('id = ?', 1)->load();
+
+					echo $this->user->delete() ? 'deleted' : 'not deleted';
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			```sql
+			DELETE users WHERE type = 'general';
+			```
+
+			Output will be like:
+			```
+			not deleted
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[type] => general
+				[phone] => 923331234567
+			)
+			```
