@@ -1146,8 +1146,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			)
 			```
 
-			##### Update Example
-			##### Delete via `const pk`
+			##### Delete via supplied column names
 			```php
 			class CI_Model_Test_Controller extends CI_Controller {
 				
