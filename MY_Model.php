@@ -199,7 +199,7 @@ class MY_Model extends CI_Model {
 	 */
 	public function start_transaction() {
 		$table = $this->_get_table_name();
-		log_message("info", "[Model.$table] - (start transaction)");
+		log_message("debug", "[Model.$table] - (start transaction)");
 
 		return $this->db->trans_begin() ? true : false;
 	}
@@ -218,7 +218,7 @@ class MY_Model extends CI_Model {
 	 */
 	public function commit_transaction() {
 		$table = $this->_get_table_name();
-		log_message("info", "[Model.$table] (commit transaction)");
+		log_message("debug", "[Model.$table] (commit transaction)");
 
 		return $this->db->trans_commit() ? true : false;
 	}
@@ -238,7 +238,7 @@ class MY_Model extends CI_Model {
 	 */
 	public function rollback_transaction() {
 		$table = $this->_get_table_name();
-		log_message("info", "[Model.$table] (rollback transaction)");
+		log_message("debug", "[Model.$table] (rollback transaction)");
 
 		return $this->db->trans_rollback() ? true : false;
 	}
@@ -273,15 +273,12 @@ class MY_Model extends CI_Model {
 	 * itself don't execute the query. To execute see `find` function 
 	 *
  	 * @access	public
-	 * @param	`void`
+	 * @param	`string`	-	Column names to be selected. Multiple columns could be specified as miltiple arguments
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function select ( ) {
-		if ( !func_num_args() )
-			throw new Exception("MY_Model::select requires column names as string arguments. At least 1 column is required", 1);
-
-		$this->query_settings['columns'] = array();
+	public function select ( $column/*, $...*/ ) {
+		$this->query_settings['columns'] = func_num_args() ? array() : array('*');
 		foreach (func_get_args() as $column) {
 			if ( is_string( $column ) ) {
 				$this->query_settings['columns'][] = $column;
@@ -358,7 +355,7 @@ class MY_Model extends CI_Model {
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function where ( $query ) {
+	public function where ( $query/*, $...*/ ) {
 		$CI =& get_instance();
 		$CI->load->helper( 'array' );
 
@@ -430,10 +427,7 @@ class MY_Model extends CI_Model {
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function group ( ) {
-		if ( !func_num_args() )
-			throw new Exception("MY_Model::group requires column names as string arguments. At least 1 column is required", 1);
-
+	public function group ( $column/*, $...*/ ) {
 		$this->query_settings['group'] = array();
 		foreach (func_get_args() as $column) {
 			if ( is_string( $column ) ) {
@@ -471,7 +465,7 @@ class MY_Model extends CI_Model {
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function having ( $query ) {
+	public function having ( $query/*, $...*/ ) {
 		$CI =& get_instance();
 		$CI->load->helper( 'array' );
 
@@ -525,7 +519,7 @@ class MY_Model extends CI_Model {
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function order ( ) {
+	public function order ( $column/*, $...*/ ) {
 		$arguments = func_get_args();
 		if ( !func_num_args() ) {
 			throw new Exception("MY_Model::order - accepts {string} arguments. At least 1 argument is required", 1);
@@ -681,6 +675,66 @@ class MY_Model extends CI_Model {
 	}
 
 	/**
+	 * Count resulting rows
+	 *
+	 * Same as find, it just don't return result, but returns count of resulting rows
+	 *
+ 	 * @access	public
+	 * @param	`void`
+	 * @param	`int`	Count of resulting rows
+	 *
+	 */
+	public function count () {
+		$result = $this->find();
+		if($result && is_array($result) && count($result)) {
+			return count($result);
+		}
+	
+		return 0;
+	}
+	
+	/**
+	 * Finds a single result
+	 *
+	 * Same as `find`, but it just returns single row
+	 *
+ 	 * @access	public
+	 * @param	`boolean`		- See `find` for datail
+	 * @param	`boolean`		- See `find` for derial
+	 * @return	`mixed`			- In case of successful search, returns `object`, otherwise `false`
+	 *
+	 */
+	public function find_one ($load_refs = false, $same_obj = false) {
+		$result = $this->limit(1)->find($load_refs, $same_obj);
+		if($result && is_array($result) && count($result)) {
+			return $result[0];
+		}
+		
+		return false;
+	}
+
+	/**
+	 * Loads search result in it self, instead of returning it
+	 *
+	 * Same as `find_one`, it jsut don't return result, but loads in requesting model
+	 *
+ 	 * @access	public
+	 * @param	`boolean`	-	See `find` for detail
+	 * @param	`boolean`	-	See `find` for detail
+	 * @return	`boolean`	-	`true` in case of successful loading, otherwise `false`
+	 *
+	 */
+	public function load ( $load_refs = false, $same_obj = false ) {
+		$loaded = false;
+		$object = $this->find_one( $load_refs, $same_obj );
+		if ($object) {
+			$loaded = $this->copy($object);
+		}
+
+		return $loaded;
+	}
+
+	/**
 	 * Loads References
 	 *
 	 * This `function` works only if you have specified `const ref` in your derived model. See ReadMe.md for details
@@ -708,26 +762,6 @@ class MY_Model extends CI_Model {
 			}
 			return true;
 		}
-		return false;
-	}
-	
-	/**
-	 * Finds a single result
-	 *
-	 * Same as `find`, but it just returns single row
-	 *
- 	 * @access	public
-	 * @param	`boolean`		- See `find` for datail
-	 * @param	`boolean`		- See `find` for derial
-	 * @return	`mixed`			- In case of successful search, returns `object`, otherwise `false`
-	 *
-	 */
-	public function find_one ($load_refs = false, $same_obj = false) {
-		$result = $this->limit(1)->find($load_refs, $same_obj);
-		if($result && is_array($result) && count($result)) {
-			return $result[0];
-		}
-		
 		return false;
 	}
 
@@ -768,46 +802,6 @@ class MY_Model extends CI_Model {
 		}
 
 		return $copied;
-	}
-
-	/**
-	 * Loads search result in it self, instead of returning it
-	 *
-	 * Same as `find_one`, it jsut don't return result, but loads in requesting model
-	 *
- 	 * @access	public
-	 * @param	`boolean`	-	See `find` for detail
-	 * @param	`boolean`	-	See `find` for detail
-	 * @return	`boolean`	-	`true` in case of successful loading, otherwise `false`
-	 *
-	 */
-	public function load ( $load_refs = false, $same_obj = false ) {
-		$loaded = false;
-		$object = $this->find_one( $load_refs, $same_obj );
-		if ($object) {
-			$loaded = $this->copy($object);
-		}
-
-		return $loaded;
-	}
-	
-	/**
-	 * Count resulting rows
-	 *
-	 * Same as find, it just don't return result, but returns count of resulting rows
-	 *
- 	 * @access	public
-	 * @param	`void`
-	 * @param	`int`	Count of resulting rows
-	 *
-	 */
-	public function count () {
-		$result = $this->find();
-		if($result && is_array($result) && count($result)) {
-			return count($result);
-		}
-	
-		return 0;
 	}
 	
 	/**
@@ -914,7 +908,7 @@ class MY_Model extends CI_Model {
 	 */
 	public function delete( ) {
 		$args	= func_get_args();
-		$where	= count($args) ? $args : $this->_get_pk();
+		$where	= func_num_args() ? $args : $this->_get_pk();
 		$table	= $this->_get_table_name();
 		$vars	= $this->columns;
 		
@@ -972,7 +966,7 @@ class MY_Model extends CI_Model {
 	 * It also allows to stip any speicified columns
 	 *
 	 * @access	public
-	 * @param	`string`	-	Can provide multiple columns names, as different arguments, to stip from the exported object.
+	 * @param	`string`	-	Column name to strip from exported object. Can provide multiple columns names as different arguments.
 	 * @param	`object`	-	Resulting export object, after stripping specified columns
 	 *
 	 */
@@ -1021,6 +1015,37 @@ class MY_Model extends CI_Model {
 	}
 
 	/**
+	 * Sets values of columns
+	 *
+	 * @access	public
+	 * @param	`string`	-	column name
+	 * @param	`mixed`		-	value of column
+	 * @return	`void`
+	 *
+	 */
+	public function set_column ( $column, $value ) {
+		if ( array_key_exists($column, $this->columns ) )
+			$this->columns[$column] = $value;
+		else
+			$this->_undefined_func_exception("set_$column");
+	}
+
+	/**
+	 * Gets values of columns
+	 *
+	 * @access	public
+	 * @param	`string`	-	column name
+	 * @return	`mixed`		-	value of column
+	 *
+	 */
+	public function get_column ( $column ) {
+		if ( array_key_exists($column, $this->columns ) )
+			return $this->columns[$column];
+
+		$this->_undefined_func_exception("get_$column");
+	}
+
+	/**
 	 * Displays undefined function call error
 	 *
 	 * @access	private
@@ -1042,25 +1067,14 @@ class MY_Model extends CI_Model {
 	 *
 	 */
 	private function _flatten_array( $array ) {
-			return array_reduce( $array, array(get_class($this), "_recursive_flatten_array"), array());	
-	}
+		return array_reduce($array, function ( $carry, $item ) {
+			if ( is_array( $item ) )
+				$carry = array_merge($carry, $this->_flatten_array( $item ) );
+			else
+				$carry[] = $item;
 
-	/**
-	 * Helper function to flatten array
-	 *
-	 * @access	private
-	 * @param	`array`	-	fallten portion (carry) of provided array
-	 * @param	`array`	-	array to flatten
-	 * @return	`array`	-	Resulting array
-	 *
-	 */
-	private function _recursive_flatten_array ( $carry, $item ) {
-		if ( is_array( $item ) )
-			$carry = array_merge($carry, array_reduce( $item, array(get_class($this), "_recursive_flatten_array"), array() ) );
-		else
-			$carry[] = $item;
-
-		return $carry;
+			return $carry;
+		}, array());
 	}
 
 	/**
@@ -1081,37 +1095,6 @@ class MY_Model extends CI_Model {
 	}
 
 	/**
-	 * Sets values of columns
-	 *
-	 * @access	private
-	 * @param	`string`	-	column name
-	 * @param	`mixed`		-	value of column
-	 * @return	`void`
-	 *
-	 */
-	private function _set_prop ( $prop, $value ) {
-		if ( array_key_exists($prop, $this->columns ) )
-			$this->columns[$prop] = $value;
-		else
-			$this->_undefined_func_exception("set_$prop");
-	}
-
-	/**
-	 * Gets values of columns
-	 *
-	 * @access	private
-	 * @param	`string`	-	column name
-	 * @return	`mixed`		-	value of column
-	 *
-	 */
-	private function _get_prop ( $prop ) {
-		if ( array_key_exists($prop, $this->columns ) )
-			return $this->columns[$prop];
-
-		$this->_undefined_func_exception("get_$prop");
-	}
-
-	/**
 	 * Allows to generate dynamic getters and setters for model columns
 	 *
 	 * @see	http://php.net/manual/en/language.oop5.overloading.php#object.call
@@ -1120,10 +1103,10 @@ class MY_Model extends CI_Model {
 		$func = substr($name, 0, 4);
 		$prop = substr($name, 4);
 		if ( $func == "set_" ) {
-			$this->_set_prop( $prop, $arguments[0] ? $arguments[0] : null );
+			call_user_method_array("set_column", $this, array_merge(array($prop), $arguments));
 
 		} else if ( $func == "get_" ) {
-			return $this->_get_prop( $prop );
+			return $this->get_column( $prop );
 
 		} else {
 			$this->_undefined_func_exception($name);
