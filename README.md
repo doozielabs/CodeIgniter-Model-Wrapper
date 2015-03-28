@@ -472,14 +472,14 @@ In this section, a brief description of each MY_Model `function` is provided.
 					$this->load->model('users', null, true);
 					$this->user
 						->select('*')
-						->limit(10, 2);
+						->limit(2, 10);
 				}
 
 			}
 			```
 			Resulting MySQL query:
 			```sql
-			SELECT * FROM users LIMIT 10, 2;
+			SELECT * FROM users LIMIT 2, 10;
 			```
 
 	9. ### Function `find()`
@@ -890,7 +890,115 @@ In this section, a brief description of each MY_Model `function` is provided.
 			)
 			```
 
-	13. ### Function `save()`
+	13. ### Magical Getter Functions
+	`Magical Getter` doesn't sounds like a function name? Yes it is not a function. CI Model Wrapper supports dynamically generated getter functions against
+	columns of your model. Sounds magical? thats why we call it Magical Getter.
+
+		Why do we need these Magical Getters? Answer is simple as our column binding is defined as protected. We should have some way to retrieve the column values.
+		So here comes the Magical Getters.
+
+		1. #### Description
+			```php
+			mixed get_<column_name>( )
+			```
+
+			The signature of these Magical Functions have 2 parts.
+
+				1. get_
+				2. <column_name>
+
+			The 1st part `get_` indicates that a Magical Getter function is being called. And the other part `<column_name>` is the name of the column you 
+			want to retrieve.
+
+			**_Be carefull!_ we also do have a `get_ref()` function. So you should not name any of your columns as `ref`. Otherwise _Magical Getter_ function for 
+			that column will not work at all, And you might have to write your own function, in your model, to get its value**
+
+		2. #### Parameters
+			- No parameters
+
+		3. #### Return Values
+			Returns the value stored in your binded column
+
+		4. #### Examples
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+					$this->user->where('id = ?', 13)->load();
+
+					echo $this->user->get_id() . "<br/>";
+					echo $this->user->get_name() . "<br/>";
+					echo $this->user->get_email() . "<br/>";
+				}
+
+			}
+			```
+
+			Output will be like:
+			```
+			13
+			Hassan
+			hassan.abbasi@doozielabs.com
+			```
+
+	14. ### Magical Setter Functions
+	Magical Setter` functions are similar to the Magical Getters. These functions are used to set the model column values.
+
+		1. #### Description
+			```php
+			void set_<column_name>( mixed $value )
+			```
+
+			The signature of these Magical Functions have 2 parts.
+			
+				1. set_
+				2. <column_name>
+
+			The 1st part `set_` indicates that a Magical Setter function is being called. And the other part `<column_name>` is the name of the column you 
+			want to change the value of.
+
+		2. #### Parameters
+			##### `$value`
+			- New value to replace with existing one.
+
+		3. #### Return Values
+			- void
+
+		4. #### Examples
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+					$this->user->where('id = ?', 13)->load();
+
+					print_r($this->user);
+					$this->user->set_name( 'Hassan Abbasi' );
+					print_r($this->user);
+				}
+			}
+			```
+
+			Output will be like:
+			```
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923337654321
+			)
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923337654321
+			)
+			```
+
+	15. ### Function `save()`
 	This is a **_Query Executer_** `function`, and is used to save the changes in your model object.
 
 		1. #### Description
@@ -980,111 +1088,94 @@ In this section, a brief description of each MY_Model `function` is provided.
 			)
 			```
 
-	14. ### Magical Getter Functions
-	`Magical Getter` doesn't sounds like a function name? Yes it is not a function. CI Model Wrapper supports dynamically generated getter functions against
-	columns of your model. Sounds magical? thats why we call it Magical Getter.
-
-		Why do we need these Magical Getters? Answer is simple as our column binding is defined as protected. We should have some way to retrieve the column values.
-		So here comes the Magical Getters.
+	16. ### Function `delete()`
+	This is a **_Query Executer_** `function`, and is used to delete table row(s).
 
 		1. #### Description
 			```php
-			mixed get_<column_name>( )
+			boolean delete( [$column, [$...]] )
 			```
 
-			The signature of these Magical Functions have 2 parts.
+			Deletes the object row from table. If `const pk` is defined, this function deletes the row based on primary key. Otherwise you
+			will have to pass the column name, by which you want to delete the row(s), as parameters of `delete()` function.
+			See how to define `const pk` in [Creating Models](#creating-models "Creating Models")
 
-				1. get_
-				2. <column_name>
-
-			The 1st part `get_` indicates that a Magical Getter function is being called. And the other part `<column_name>` is the name of your column you 
-			want to retrieve.
-
-			**_Be carefull!_ we also do have a `get_ref()` function. So you should not name any of your columns as `ref`. Otherwise _Magical Getter_ function for 
-			that column will not work at all, And you might have to write your own function, in your model, to get its value**
+			If neither you have set `const pk` nor you supplied the columns names as parametes, `delete()` function will not work at all, and
+			will return false.
 
 		2. #### Parameters
-			- No parameters
+			##### $column
+			- (Optional) Column name by which you want to delete matching rows
+			- Can provide multiple columns as separate arguments
 
 		3. #### Return Values
-			Returns the value stored in your binded column
+			Returns `true` on success. Otherwise returns `false`
 
 		4. #### Examples
+			##### Delete via `const pk`
 			```php
 			class CI_Model_Test_Controller extends CI_Controller {
 				
 				public function index() {
 					$this->load->model('users', null, true);
-					$this->user->where('id = ?', 13)->load();
 
-					echo $this->user->get_id() . "<br/>";
-					echo $this->user->get_name() . "<br/>";
-					echo $this->user->get_email() . "<br/>";
-				}
+					// Assuming that User model have defined `const pk = 'id';`
+					$this->user->where('id = ?', 1)->load();
 
-			}
-			```
-
-			Output will be like:
-			```
-			13
-			Hassan
-			hassan.abbasi@doozielabs.com
-			```
-
-	15. ### Magical Setter Functions
-	Magical Setter` functions are similar to the Magical Getters. These functions are used to set the model column values.
-
-		1. #### Description
-			```php
-			void set_<column_name>( mixed $value )
-			```
-
-			The signature of these Magical Functions have 2 parts.
-			
-				1. set_
-				2. <column_name>
-
-			The 1st part `set_` indicates that a Magical Setter function is being called. And the other part `<column_name>` is the name of your column you 
-			want to change the value of.
-
-		2. #### Parameters
-			##### `$value`
-			- New value to replace with existing one.
-
-		3. #### Return Values
-			- `null`
-
-		4. #### Examples
-			```php
-			class CI_Model_Test_Controller extends CI_Controller {
-				
-				public function index() {
-					$this->load->model('users', null, true);
-					$this->user->where('id = ?', 13)->load();
-
-					print_r($this->user);
-					$this->user->set_name( 'Hassan Abbasi' );
+					echo $this->user->delete() ? 'deleted' : 'not deleted';
 					print_r($this->user);
 				}
 
 			}
 			```
+			Resulting MySQL query:
+			```sql
+			DELETE users WHERE id = 1;
+			```
 
 			Output will be like:
 			```
+			deleted
 			User Object
 			(
 				[id] => 13
 				[name] => Hassan
 				[email] => hassan.abbasi@doozielabs.com
-				[phone] => 923337654321
+				[type] => general
+				[phone] => 923331234567
 			)
+			```
+
+			##### Update Example
+			##### Delete via `const pk`
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					$this->user->where('id = ?', 1)->load();
+
+					echo $this->user->delete('type') ? 'deleted' : 'not deleted';
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			```sql
+			DELETE users WHERE type = 'general';
+			```
+
+			Output will be like:
+			```
+			deleted
 			User Object
 			(
 				[id] => 13
-				[name] => Hassan Abbasi
+				[name] => Hassan
 				[email] => hassan.abbasi@doozielabs.com
-				[phone] => 923337654321
+				[type] => general
+				[phone] => 923331234567
 			)
 			```
