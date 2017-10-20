@@ -71,10 +71,10 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 		```
 
 3. ## Function Details
-In this section, a brief description of each MY_Model `function` is provided.
+	In this section, a brief description of each MY_Model `function` is provided.
 
 	1. ### Function `select()`
-	This is a **_Query Builder_** function. And it is used to specify columns to be selected in search query. If this function is not used to specify columns, search query will return '*' (all) columns
+		This is a **_Query Builder_** function. And it is used to specify columns to be selected in search query. If this function is not used to specify columns, search query will return '*' (all) columns
 
 		1. #### Description
 			```php
@@ -110,7 +110,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	2. ### Function `from()`
-	This is a **_Query Builder_** function. And it is used to specify table to be searched by search query. If this function is not used to specify table(s), search query will use `const table` as searching table. And in case `const table` is not defined, Search query will assume Model `class` name as the table name.
+		This is a **_Query Builder_** function. And it is used to specify table to be searched by search query. If this function is not used to specify table(s), search query will use `const table` as searching table. And in case `const table` is not defined, Search query will assume Model `class` name as the table name.
 
 		1. #### Description
 			```php
@@ -183,7 +183,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	3. ### Function `where()`
-	This is a **_Query Builder_** function. And it is used to filter resulting rows.
+		This is a **_Query Builder_** function. And it is used to filter resulting rows.
 
 		1. #### Description
 			```php
@@ -264,7 +264,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	4. ### Function `make_wherein()`
-	This `function` is used to generate template for where in claues.
+		This `function` is used to generate template for where in claues.
 
 		1. #### Description
 			```php
@@ -305,7 +305,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	5. ### Function `group()`
-	This is a **_Query Builder_** function. And it is used to specify grouping column(s) for search query.
+		This is a **_Query Builder_** function. And it is used to specify grouping column(s) for search query.
 
 		1. #### Description
 			```php
@@ -343,7 +343,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	6. ### Function `having()`
-	This is a **_Query Builder_** function. And it is used to specify the condition according to which grouped data is filtered
+		This is a **_Query Builder_** function. And it is used to specify the condition according to which grouped data is filtered
 
 		1. #### Description
 			```php
@@ -387,7 +387,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	7. ### Function `order()`
-	This is a **_Query Builder_** function. And it is used to specify sorting order of resulting rows.
+		This is a **_Query Builder_** function. And it is used to specify sorting order of resulting rows.
 
 		1. #### Description
 			```php
@@ -425,7 +425,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	8. ### Function `limit()`
-	This is a **_Query Builder_** function. And it is used to specify number of rows to be selected. Could be useful in for paginating results.
+		This is a **_Query Builder_** function. And it is used to specify number of rows to be selected. Could be useful in for paginating results.
 
 		1. #### Description
 			```php
@@ -483,7 +483,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	9. ### Function `find()`
-	This is a **_Query Executer_** `function`, and is used to execute the search query.
+		This is a **_Query Executer_** `function`, and is used to execute the search query.
 
 		1. #### Description
 			```php
@@ -597,7 +597,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	10. ### Function `find_one()`
-	This is a **_Query Executer_** `function`, and is similar to `find()`. The only difference is that it returns single row instead of `array`
+		This is a **_Query Executer_** `function`, and is similar to `find()`. The only difference is that it returns single row instead of `array`
 
 		1. #### Description
 			```php
@@ -700,7 +700,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	11. ### Function `load()`
-	This is a **_Query Executer_** `function`, and is similar to `find_one()`. The only difference is that it instead of returning result, it loads that in itself.
+		This is a **_Query Executer_** `function`, and is similar to `find_one()`. The only difference is that it instead of returning result, it loads that in itself.
 
 		1. #### Description
 			```php
@@ -803,7 +803,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	12. ### Function `load_refs()`
-	This is a **_Query Executer_** `function`, and is used to load references that are defined in model as `const ref`
+		This is a **_Query Executer_** `function`, and is used to load references that are defined in model as `const ref`
 	See how to define `const ref` in [Creating Models](#creating-models "Creating Models")
 
 		1. #### Description
@@ -891,8 +891,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	13. ### Magical Getter Functions
-	`Magical Getter` doesn't sounds like a function name? Yes it is not a function. CI Model Wrapper supports dynamically generated getter functions against
-	columns of your model. Sounds magical? thats why we call it Magical Getter.
+		`Magical Getter` doesn't sounds like a function name? Yes it is not a function. CI Model Wrapper supports dynamically generated getter functions against columns of your model. Sounds magical? thats why we call it Magical Getter.
 
 		Why do we need these Magical Getters? Answer is simple as our column binding is defined as protected. We should have some way to retrieve the column values.
 		So here comes the Magical Getters.
@@ -943,7 +942,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	14. ### Magical Setter Functions
-	Magical Setter` functions are similar to the Magical Getters. These functions are used to set the model column values.
+		Magical Setter` functions are similar to the Magical Getters. These functions are used to set the model column values.
 
 		1. #### Description
 			```php
@@ -999,7 +998,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	15. ### Function `save()`
-	This is a **_Query Executer_** `function`, and is used to save the changes in your model object.
+		This is a **_Query Executer_** `function`, and is used to save the changes in your model object.
 
 		1. #### Description
 			```php
@@ -1089,7 +1088,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	16. ### Function `delete()`
-	This is a **_Query Executer_** `function`, and is used to delete table row(s).
+		This is a **_Query Executer_** `function`, and is used to delete table row(s).
 
 		1. #### Description
 			```php
