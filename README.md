@@ -200,7 +200,7 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 
 			##### `$...`
 			- Values agains `?` in filter template. Can provide multiple values as separate parameters.
-			- In case or array, `where()` function treats each index of that array as a separate argument.
+			- In case of array, `where()` function treats each index of that array as a separate argument.
 			- Array values are useful in case of dynamically generate matching criteria
 
 		3. #### Return Values
@@ -361,7 +361,7 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 
 			##### `$...`
 			- Values agains `?` in filter template. Can provide multiple values as separate parameters.
-			- In case or array, `having()` function treats each index of that array as a separate argument.
+			- In case of array, `having()` function treats each index of that array as a separate argument.
 			- Array values are useful in case of dynamically generate matching criteria
 
 		3. #### Return Values
