@@ -20,7 +20,7 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 			const table = 'users';
 			const pk    = 'id';
 			const ai    = 'id';
-			const ref   = 'id:History.user_id';
+			const ref   = 'id:History.user_id,id:Order.user_id';
 		}
 		```
 	4. Add columns of your table as `property` of your model `class`
@@ -34,10 +34,12 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 			const ref   = 'id:History.user_id';
 			
 			/* Column Binding */
-			var $id;
-			var $username;
-			var $email;
-			var $password;
+			protected $columns = array(
+				'id'		=> null,
+				'username'	=> null,
+				'email'		=> null,
+				'password'	=> null
+			);
 		}
 		```
 	5. If you want to add `__construct` in your model, its first line should be `parent::__construct()`
@@ -51,26 +53,28 @@ CI_Model wrapper to simplify database actions by predefined / easy to use functi
 			const ref   = 'id:History.user_id';
 			
 			/* Column Binding */
-			var $id;
-			var $username;
-			var $email;
-			var $password;
-			var $picture;
+			protected $columns = array(
+				'id'		=> null,
+				'username'	=> null,
+				'email'		=> null,
+				'password'	=> null
+				'picture'	=> null
+			);
 			
 			/* Public Constructor */
 			public function __construct ( ) {
 				parent::__construct();
 				
-				$this->picture = 'some default value'; 
+				$this->columns['picture'] = $this->some_value_from_some_spooky_function(); 
 			}
 		}
 		```
 
 3. ## Function Details
-In this section, a brief description of each MY_Model `function` is provided.
+	In this section, a brief description of each MY_Model `function` is provided.
 
 	1. ### Function `select()`
-	This is a **_Query Builder_** function. And it is used to specify columns to be selected in search query. If this function is not used to specify columns, search query will return '*' (all) columns
+		This is a **_Query Builder_** function. And it is used to specify columns to be selected in search query. If this function is not used to specify columns, search query will return '*' (all) columns
 
 		1. #### Description
 			```php
@@ -106,7 +110,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	2. ### Function `from()`
-	This is a **_Query Builder_** function. And it is used to specify table to be searched by search query. If this function is not used to specify table(s), search query will use `const table` as searching table. And in case `const table` is not defined, Search query will assume Model `class` name as the table name.
+		This is a **_Query Builder_** function. And it is used to specify table to be searched by search query. If this function is not used to specify table(s), search query will use `const table` as searching table. And in case `const table` is not defined, Search query will assume Model `class` name as the table name.
 
 		1. #### Description
 			```php
@@ -179,7 +183,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	3. ### Function `where()`
-	This is a **_Query Builder_** function. And it is used to filter resulting rows.
+		This is a **_Query Builder_** function. And it is used to filter resulting rows.
 
 		1. #### Description
 			```php
@@ -196,7 +200,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 
 			##### `$...`
 			- Values agains `?` in filter template. Can provide multiple values as separate parameters.
-			- In case or array, `where()` function treats each index of that array as a separate argument.
+			- In case of array, `where()` function treats each index of that array as a separate argument.
 			- Array values are useful in case of dynamically generate matching criteria
 
 		3. #### Return Values
@@ -260,7 +264,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	4. ### Function `make_wherein()`
-	This `function` is used to generate template for where in claues.
+		This `function` is used to generate template for where in claues.
 
 		1. #### Description
 			```php
@@ -301,7 +305,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	5. ### Function `group()`
-	This is a **_Query Builder_** function. And it is used to specify grouping column(s) for search query.
+		This is a **_Query Builder_** function. And it is used to specify grouping column(s) for search query.
 
 		1. #### Description
 			```php
@@ -325,7 +329,6 @@ In this section, a brief description of each MY_Model `function` is provided.
 			class CI_Model_Test_Controller extends CI_Controller {
 				
 				public function index() {
-					$values = array('thomas', 'james', 'clark', 'hanks');
 					$this->load->model('user', null, true);
 					$this->user
 						->select('email')
@@ -340,7 +343,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	6. ### Function `having()`
-	This is a **_Query Builder_** function. And it is used to specify the condition according to which grouped data is filtered
+		This is a **_Query Builder_** function. And it is used to specify the condition according to which grouped data is filtered
 
 		1. #### Description
 			```php
@@ -358,7 +361,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 
 			##### `$...`
 			- Values agains `?` in filter template. Can provide multiple values as separate parameters.
-			- In case or array, `having()` function treats each index of that array as a separate argument.
+			- In case of array, `having()` function treats each index of that array as a separate argument.
 			- Array values are useful in case of dynamically generate matching criteria
 
 		3. #### Return Values
@@ -384,7 +387,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	7. ### Function `order()`
-	This is a **_Query Builder_** function. And it is used to specify sorting order of resulting rows.
+		This is a **_Query Builder_** function. And it is used to specify sorting order of resulting rows.
 
 		1. #### Description
 			```php
@@ -422,7 +425,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	8. ### Function `limit()`
-	This is a **_Query Builder_** function. And it is used to specify number of rows to be selected. Could be useful in for paginating results.
+		This is a **_Query Builder_** function. And it is used to specify number of rows to be selected. Could be useful in for paginating results.
 
 		1. #### Description
 			```php
@@ -469,18 +472,18 @@ In this section, a brief description of each MY_Model `function` is provided.
 					$this->load->model('users', null, true);
 					$this->user
 						->select('*')
-						->limit(10, 2);
+						->limit(2, 10);
 				}
 
 			}
 			```
 			Resulting MySQL query:
 			```sql
-			SELECT * FROM users LIMIT 10, 2;
+			SELECT * FROM users LIMIT 2, 10;
 			```
 
 	9. ### Function `find()`
-	This is a **_Query Executer_** `function`, and is used to execute the search query.
+		This is a **_Query Executer_** `function`, and is used to execute the search query.
 
 		1. #### Description
 			```php
@@ -527,8 +530,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 				[0]	=> User Object
 					(
 						[id] => 123
-						[name] => Tom Hanks
-						[email] => tom.hanks@doozielabs.com
+						[name] => Hassan Abbasi
+						[email] => hassan.abbasi@doozielabs.com
 						[username] => hanks
 						[password] => abc1234
 					)
@@ -561,9 +564,9 @@ In this section, a brief description of each MY_Model `function` is provided.
 				[0]	=> User Object
 					(
 						[id] => 123
-						[name] => Methew Thomas
-						[email] => methew.thomas@doozielabs.com
-						[username] => methomas
+						[name] => Hassan Abbasi
+						[email] => hassan.abbasi@doozielabs.com
+						[username] => hassanabbasi
 						[password] => abc1234
 						[ref] => Array
 								(
@@ -594,7 +597,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	10. ### Function `find_one()`
-	This is a **_Query Executer_** `function`, and is similar to `find()`. The only difference is that it returns single row instead of `array`
+		This is a **_Query Executer_** `function`, and is similar to `find()`. The only difference is that it returns single row instead of `array`
 
 		1. #### Description
 			```php
@@ -638,8 +641,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 			)
@@ -670,8 +673,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 				[ref] => Array
@@ -697,7 +700,7 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	11. ### Function `load()`
-	This is a **_Query Executer_** `function`, and is similar to `find_one()`. The only difference is that it instead of returning result, it loads that in itself.
+		This is a **_Query Executer_** `function`, and is similar to `find_one()`. The only difference is that it instead of returning result, it loads that in itself.
 
 		1. #### Description
 			```php
@@ -741,8 +744,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 			)
@@ -773,8 +776,8 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 				[ref] => Array
@@ -800,19 +803,19 @@ In this section, a brief description of each MY_Model `function` is provided.
 			```
 
 	12. ### Function `load_refs()`
-	This is a **_Query Executer_** `function`, and is used to load references that are defined in model as `const ref`
+		This is a **_Query Executer_** `function`, and is used to load references that are defined in model as `const ref`
 	See how to define `const ref` in [Creating Models](#creating-models "Creating Models")
 
 		1. #### Description
 			```php
-			boolean load_refs( )
+			boolean load_refs( [string $ref] )
 			```
 
-			Executes the query built from above mentioned **_Query Builder_** functions.
-			This function finds and loads references of current loaded values of model.
+			If $ref is defined, load that reference. Otherwise loads the references defined in `const ref`
 
 		2. #### Parameters
-			- No parameters
+			##### `$ref`
+			- Optional parameter. If defined, `load_refs()` function will load only that reference.
 
 		3. #### Return Values
 			Returns `true` in case of successful loading. Otherwise returns `false`
@@ -845,16 +848,16 @@ In this section, a brief description of each MY_Model `function` is provided.
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 			)
 			User Object
 			(
 				[id] => 123
-				[name] => Tom Hanks
-				[email] => tom.hanks@doozielabs.com
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
 				[username] => hanks
 				[password] => abc1234
 				[ref] => Array
@@ -884,5 +887,324 @@ In this section, a brief description of each MY_Model `function` is provided.
 											...
 										)
 						)
+			)
+			```
+
+	13. ### Magical Getter Functions
+		`Magical Getter` doesn't sounds like a function name? Yes it is not a function. CI Model Wrapper supports dynamically generated getter functions against columns of your model. Sounds magical? thats why we call it Magical Getter.
+
+		Why do we need these Magical Getters? Answer is simple as our column binding is defined as protected. We should have some way to retrieve the column values.
+		So here comes the Magical Getters.
+
+		1. #### Description
+			```php
+			mixed get_<column_name>( )
+			```
+
+			The signature of these Magical Functions have 2 parts.
+
+				1. get_
+				2. <column_name>
+
+			The 1st part `get_` indicates that a Magical Getter function is being called. And the other part `<column_name>` is the name of the column you 
+			want to retrieve.
+
+			**_Be carefull!_ we also do have a `get_ref()` function. So you should not name any of your columns as `ref`. Otherwise _Magical Getter_ function for 
+			that column will not work at all, And you might have to write your own function, in your model, to get its value**
+
+		2. #### Parameters
+			- No parameters
+
+		3. #### Return Values
+			Returns the value stored in your binded column
+
+		4. #### Examples
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+					$this->user->where('id = ?', 13)->load();
+
+					echo $this->user->get_id() . "<br/>";
+					echo $this->user->get_name() . "<br/>";
+					echo $this->user->get_email() . "<br/>";
+				}
+
+			}
+			```
+
+			Output will be like:
+			```
+			13
+			Hassan
+			hassan.abbasi@doozielabs.com
+			```
+
+	14. ### Magical Setter Functions
+		Magical Setter` functions are similar to the Magical Getters. These functions are used to set the model column values.
+
+		1. #### Description
+			```php
+			void set_<column_name>( mixed $value )
+			```
+
+			The signature of these Magical Functions have 2 parts.
+			
+				1. set_
+				2. <column_name>
+
+			The 1st part `set_` indicates that a Magical Setter function is being called. And the other part `<column_name>` is the name of the column you 
+			want to change the value of.
+
+		2. #### Parameters
+			##### `$value`
+			- New value to replace with existing one.
+
+		3. #### Return Values
+			- void
+
+		4. #### Examples
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+					$this->user->where('id = ?', 13)->load();
+
+					print_r($this->user);
+					$this->user->set_name( 'Hassan Abbasi' );
+					print_r($this->user);
+				}
+			}
+			```
+
+			Output will be like:
+			```
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923337654321
+			)
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan Abbasi
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923337654321
+			)
+			```
+
+	15. ### Function `save()`
+		This is a **_Query Executer_** `function`, and is used to save the changes in your model object.
+
+		1. #### Description
+			```php
+			mixed save( )
+			```
+
+			Saves the changes in your model object. `save()` function automatically detects (using primary key constant), whether the object has to to be inserted 
+			or it is an update to an existing row. To make this function work as expected, you need to define `const pk`.
+			See how to define `const pk` in [Creating Models](#creating-models "Creating Models")
+
+			If you have defined `const ai` in your model, and you have inserting a new object, `save()` function will set the `auto_increment` value to the defined `ai` column.
+
+		2. #### Parameters
+			- No parameters
+
+		3. #### Return Values
+			Returns `auto_increment` value, in case of new item is saved and have an auto_increment column. Otherwise returns `true` on success and `false` on failure.
+
+		4. #### Examples
+			##### Insert Example
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					// Assuming that User model have defined `const pk = 'id';` and `const ai = 'id';`
+					$this->user->set_name("Hassan");
+					$this->user->set_email("hassan.abbasi@doozielabs.com");
+					$this->user->set_phone("923331234567");
+
+					echo $this->user->save();
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			```sql
+			INSERT INTO users (id, name, email, phone) VALUES (NULL, 'Hassan', 'hassan.abbasi@doozielabs.com', '923331234567');
+			```
+
+			Output will be like:
+			```
+			13
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923331234567
+			)
+			```
+
+			##### Update Example
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					// Assuming that User model have defined `const pk = 'id';` and `const ai = 'id';`
+					$this->user->where('id = ?', 13)->load();
+					$this->user->set_phone("923337654321");
+
+					echo $this->user->save() ? 'saved' : 'not saved';
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			```sql
+			UPDATE TABLE users SET id = 13, name = 'Hassan', email = 'hassan.abbasi@doozielabs.com', phone = '923337654321' WHERE id = 13;
+			```
+
+			Output will be like:
+			```
+			saved
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[phone] => 923337654321
+			)
+			```
+
+	16. ### Function `delete()`
+		This is a **_Query Executer_** `function`, and is used to delete table row(s).
+
+		1. #### Description
+			```php
+			boolean delete( [$column, [$...]] )
+			```
+
+			Deletes the object row from table. If `const pk` is defined, this function deletes the row based on primary key. Otherwise you
+			will have to pass the column name, by which you want to delete the row(s), as parameters of `delete()` function.
+			See how to define `const pk` in [Creating Models](#creating-models "Creating Models")
+
+			If neither you have set `const pk` nor you supplied the columns names as parametes, `delete()` function will not work at all, and
+			will return false.
+
+		2. #### Parameters
+			##### $column
+			- (Optional) Column name by which you want to delete matching rows
+			- Can provide multiple columns as separate arguments
+
+		3. #### Return Values
+			Returns `true` on success. Otherwise returns `false`
+
+		4. #### Examples
+			##### Delete via `const pk`
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					// Assuming that User model have defined `const pk = 'id';`
+					$this->user->where('id = ?', 1)->load();
+
+					echo $this->user->delete() ? 'deleted' : 'not deleted';
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			```sql
+			DELETE users WHERE id = 1;
+			```
+
+			Output will be like:
+			```
+			deleted
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[type] => general
+				[phone] => 923331234567
+			)
+			```
+
+			##### Delete via supplied column names
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					$this->user->where('id = ?', 1)->load();
+
+					echo $this->user->delete('type') ? 'deleted' : 'not deleted';
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			```sql
+			DELETE users WHERE type = 'general';
+			```
+
+			Output will be like:
+			```
+			deleted
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[type] => general
+				[phone] => 923331234567
+			)
+			```
+
+			##### Delete via nothing supplied and `const pk` not defined
+			```php
+			class CI_Model_Test_Controller extends CI_Controller {
+				
+				public function index() {
+					$this->load->model('users', null, true);
+
+					$this->user->where('id = ?', 1)->load();
+
+					echo $this->user->delete() ? 'deleted' : 'not deleted';
+					print_r($this->user);
+				}
+
+			}
+			```
+			Resulting MySQL query:
+			This will not generate MySQL Query!
+
+			Output will be like:
+			```
+			not deleted
+			User Object
+			(
+				[id] => 13
+				[name] => Hassan
+				[email] => hassan.abbasi@doozielabs.com
+				[type] => general
+				[phone] => 923331234567
 			)
 			```

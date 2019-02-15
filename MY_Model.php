@@ -25,7 +25,10 @@
  * @author		DoozieLabs
  */
 class MY_Model extends CI_Model {
-	private $query_settings;
+
+	protected $columns		= array();
+	private $query_settings	= array();
+	private $ref			= array();
 
 	/**
 	 * Constructor
@@ -36,6 +39,32 @@ class MY_Model extends CI_Model {
  	{
 		log_message('debug', "[Model." . $this->_get_table_name() . "] - Initialized");
 		$this->reset_query();
+		$this->_validate_column_binding();
+ 	}
+
+ 	/**
+ 	 * Validates column binding for models
+ 	 *
+ 	 * @access	private
+ 	 * @param	`void`
+ 	 * @return	`boolean`
+ 	 *
+ 	 */
+ 	private function _validate_column_binding() {
+ 		if ( is_array($this->columns) && count($this->columns) ) {
+ 			foreach ($this->columns as $column => $value) {
+ 				if ( is_array($value) || is_object($value) ) {
+ 					trigger_error(get_class($this) . '::columns - Malformed column binding. Only string, numeric, and NULL are allowed', E_USER_ERROR);
+ 					return false;
+ 				}
+ 			}
+ 			return true;
+ 		}
+
+ 		if (get_class($this) != "MY_Model")
+ 			trigger_error(get_class($this) . '::columns - Columns not binded', E_USER_ERROR);
+
+ 		return false;
  	}
 
  	/**
@@ -52,30 +81,19 @@ class MY_Model extends CI_Model {
 		$class = new ReflectionClass($this);
 		$table = $class->getConstant("table");
 		
-		return $table ? $table : $class->name;
+		return $this->_is_valid_identifier($table) ? $table : $class->name;
 	}
 
 	/**
- 	 * Resets search query parameters
- 	 *
- 	 * @access	public
- 	 * @param	`void`
- 	 * @return `object`	-	Returns self
- 	 *
- 	 */
- 	public function reset_query ( ) {
-  		log_message('debug', "[Model." . $this->_get_table_name() . "] (reset_query)");
-	 	$this->query_settings = array (
-			'columns'	=> array( '*' ),
-			'table'		=> $this->_get_table_name(),
-			'where'		=> null,
-			'order'		=> null,
-			'group'		=> null,
-			'having'	=> null,
-			'limit'		=> null
-		);
-
-		return $this;
+	 * Validates provided string as a database field / table name
+	 *
+	 * @access	private
+	 * @param	`string`
+	 * @return	`boolean`
+	 *
+	 */
+	private function _is_valid_identifier ( $name ) {
+		return (is_string($name) && preg_match("=^[a-zA-Z0-9_]+$=", $name)) ? true : false;
 	}
 
 	/**
@@ -92,13 +110,17 @@ class MY_Model extends CI_Model {
 		$class = new ReflectionClass($this);
 		$pk = $class->getConstant("pk");	
 
-		if ($pk) {
-			$pk = explode(",", $pk);
-			foreach ($pk as $key => $value) {
-				$pk[$key] = trim($value);
+		if (is_string($pk) && strlen($pk)) {
+			if (preg_match("=^([a-zA-Z0-9_]+)(,[a-zA-Z0-9_]+)*$=", $pk)) {
+				$pk = explode(",", $pk);
+				foreach ($pk as $key => $value) {
+					$pk[$key] = trim($value);
+				}
+				return $pk;
 			}
+			trigger_error(get_class($this) . '::pk Malformed primary keys', E_USER_NOTICE);
 		}
-		return $pk;
+		return null;
 	}
 
 	/**
@@ -113,7 +135,13 @@ class MY_Model extends CI_Model {
 	 */
 	protected function _get_ai () {
 		$class = new ReflectionClass($this);
-		return $class->getConstant("ai");
+		$ai = $class->getConstant("ai");
+		if ( $ai && $this->_is_valid_identifier($ai) )
+			return $ai;
+		else if ( $ai )
+			trigger_error(get_class($this) . '::ai Malformed auto increment key', E_USER_NOTICE);
+
+		return null;
 	}
 
 	/**
@@ -126,30 +154,35 @@ class MY_Model extends CI_Model {
 	 * @return	`array`	Array of relations in case you have set `const ref`, otherwise returns `null`
 	 *
 	 */
-	protected function _get_refs () {
-		$class = new ReflectionClass($this);
-		$ref = $class->getConstant("ref");	
-
-		if ($ref) {
-			$ref = explode(",", $ref);
-			foreach ($ref as $key => $value) {
-				$act_ref = array();
-				$raw_ref = trim($value);
-				$raw_ref = explode(":", $value);
-
-				if (!count($raw_ref) == 2) continue;
-
-				$act_ref['column'] = trim($raw_ref[0]);
-				$raw_ref = explode(".", $raw_ref[1]);
-
-				if (!count($raw_ref) == 2) continue;
-
-				$act_ref['ref'] = array( "table" => trim($raw_ref[0]), "column" => trim($raw_ref[1]) );
-
-				$ref[$key] = $act_ref;
-			}
+	protected function _get_refs ($ref = null) {
+		if ( !$ref ) {
+			$class	= new ReflectionClass($this);
+			$ref	= $class->getConstant("ref");
 		}
-		return $ref;
+		if (is_string($ref) && strlen($ref)) {
+			if (preg_match("=^([a-zA-Z0-9_]+:[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)(,[a-zA-Z0-9_]+:[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)*$=", $ref)) {
+				$ref = explode(",", $ref);
+				foreach ($ref as $key => $value) {
+					$act_ref = array();
+					$raw_ref = trim($value);
+					$raw_ref = explode(":", $value);
+
+					if (!count($raw_ref) == 2) continue;
+
+					$act_ref['column'] = trim($raw_ref[0]);
+					$raw_ref = explode(".", $raw_ref[1]);
+
+					if (!count($raw_ref) == 2) continue;
+
+					$act_ref['ref'] = array( "table" => trim($raw_ref[0]), "column" => trim($raw_ref[1]) );
+
+					$ref[$key] = $act_ref;
+				}
+				return $ref;
+			}
+			trigger_error(get_class($this) . '::ref - Malformed references', E_USER_NOTICE);
+		}
+		return null;
 	}
 	
 	/**
@@ -166,7 +199,7 @@ class MY_Model extends CI_Model {
 	 */
 	public function start_transaction() {
 		$table = $this->_get_table_name();
-		log_message("info", "[Model.$table] - (start transaction)");
+		log_message("debug", "[Model.$table] - (start transaction)");
 
 		return $this->db->trans_begin() ? true : false;
 	}
@@ -185,7 +218,7 @@ class MY_Model extends CI_Model {
 	 */
 	public function commit_transaction() {
 		$table = $this->_get_table_name();
-		log_message("info", "[Model.$table] (commit transaction)");
+		log_message("debug", "[Model.$table] (commit transaction)");
 
 		return $this->db->trans_commit() ? true : false;
 	}
@@ -205,9 +238,32 @@ class MY_Model extends CI_Model {
 	 */
 	public function rollback_transaction() {
 		$table = $this->_get_table_name();
-		log_message("info", "[Model.$table] (rollback transaction)");
+		log_message("debug", "[Model.$table] (rollback transaction)");
 
 		return $this->db->trans_rollback() ? true : false;
+	}
+
+	/**
+	 * Resets search query parameters
+	 *
+	 * @access	public
+	 * @param	`void`
+	 * @return	`object`	-	Returns self
+	 *
+	 */
+	public function reset_query ( ) {
+		log_message('debug', "[Model." . $this->_get_table_name() . "] (reset_query)");
+		$this->query_settings = array (
+			'columns'	=> array( '*' ),
+			'table'		=> $this->_get_table_name(),
+			'where'		=> null,
+			'order'		=> null,
+			'group'		=> null,
+			'having'	=> null,
+			'limit'		=> null
+		);
+
+		return $this;
 	}
 
 	/**
@@ -217,15 +273,12 @@ class MY_Model extends CI_Model {
 	 * itself don't execute the query. To execute see `find` function 
 	 *
  	 * @access	public
-	 * @param	`void`
+	 * @param	`string`	-	Column names to be selected. Multiple columns could be specified as miltiple arguments
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function select ( ) {
-		if ( !func_num_args() )
-			throw new Exception("MY_Model::select requires column names as string arguments. At least 1 column is required", 1);
-
-		$this->query_settings['columns'] = array();
+	public function select ( $column/*, $...*/ ) {
+		$this->query_settings['columns'] = func_num_args() ? array() : array('*');
 		foreach (func_get_args() as $column) {
 			if ( is_string( $column ) ) {
 				$this->query_settings['columns'][] = $column;
@@ -302,7 +355,7 @@ class MY_Model extends CI_Model {
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function where ( $query ) {
+	public function where ( $query/*, $...*/ ) {
 		$CI =& get_instance();
 		$CI->load->helper( 'array' );
 
@@ -374,10 +427,7 @@ class MY_Model extends CI_Model {
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function group ( ) {
-		if ( !func_num_args() )
-			throw new Exception("MY_Model::group requires column names as string arguments. At least 1 column is required", 1);
-
+	public function group ( $column/*, $...*/ ) {
 		$this->query_settings['group'] = array();
 		foreach (func_get_args() as $column) {
 			if ( is_string( $column ) ) {
@@ -415,7 +465,7 @@ class MY_Model extends CI_Model {
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function having ( $query ) {
+	public function having ( $query/*, $...*/ ) {
 		$CI =& get_instance();
 		$CI->load->helper( 'array' );
 
@@ -469,7 +519,7 @@ class MY_Model extends CI_Model {
 	 * @return	`object`	-	Returns self
 	 *
 	 */
-	public function order ( ) {
+	public function order ( $column/*, $...*/ ) {
 		$arguments = func_get_args();
 		if ( !func_num_args() ) {
 			throw new Exception("MY_Model::order - accepts {string} arguments. At least 1 argument is required", 1);
@@ -600,13 +650,18 @@ class MY_Model extends CI_Model {
 
 		$results = array();
 		if ( $db_responce = $this->db->query($query) ) {
-			$results = $db_responce->result(($table == $this->query_settings['table'] || $same_obj) ? get_class($this) : "object");
-			if ( is_array( $results ) && $load_refs ) {
-				log_message('debug', "[Model.$table] (find) - Loading References");
+			$results = $db_responce->result("array");
+			if ( is_array( $results ) ) {
+				if ( $load_refs )
+					log_message('debug', "[Model.$table] (find) - Loading References");
 
-				foreach ($results as $result) {
-					if ( is_subclass_of($result, "MY_Model") )
-						$result->load_refs();
+				foreach ($results as $rkey => $result) {
+					if ($table == $this->query_settings['table'] || $same_obj) {
+						$results[$rkey] = $this->_cast($result);
+					}
+
+					if ( $load_refs && is_subclass_of($results[$rkey], "MY_Model") )
+						$results[$rkey]->load_refs();
 				}
 			}
 			if ( !$results ) $results = array();
@@ -620,34 +675,22 @@ class MY_Model extends CI_Model {
 	}
 
 	/**
-	 * Loads References
+	 * Count resulting rows
 	 *
-	 * This `function` works only if you have specified `const ref` in your derived model. See ReadMe.md for details
+	 * Same as find, it just don't return result, but returns count of resulting rows
 	 *
  	 * @access	public
 	 * @param	`void`
-	 * @return	`boolean`	-	`true` in case of References are loaded. Otherwise `false`
+	 * @param	`int`	Count of resulting rows
 	 *
 	 */
-	public function load_refs ( ) {
-		
-		if ( $refs = $this->_get_refs() ) {
-			$this->ref = array();
-			foreach ($refs as $ref) {
-				$ref_col		= $ref['column'];
-				$ref_table		= $ref['ref']['table'];
-				$ref_table_col	= $ref['ref']['column'];
-				
-				if ( !isset( $this->$ref_col ) ) continue;
-
-				$CI =& get_instance();
-				$CI->load->model( $ref_table, $ref_table, true );
-				$this->ref["{$ref_col}:{$ref_table}"] = $CI->$ref_table->where("{$ref_table_col} = ?", $this->$ref_col)->find();
-
-			}
-			return true;
+	public function count () {
+		$result = $this->find();
+		if($result && is_array($result) && count($result)) {
+			return count($result);
 		}
-		return false;
+	
+		return 0;
 	}
 	
 	/**
@@ -671,32 +714,6 @@ class MY_Model extends CI_Model {
 	}
 
 	/**
-	 * Copy model object
-	 *
-	 * Will copy only if provided object is a same model.
-	 *
- 	 * @access	private
-	 * @param	`object`	-	model object to copy
-	 * @return	`boolean`	-	`true` in case of successful copy, othewise `false`
-	 *
-	 */
-	private function copy ($object) {
-		$copied = false;
-		if ($object instanceof self) {
-			$object_array = (array) $object;
-
-			foreach ($object_array as $property => $value) {
-				if (preg_match("=^[a-zA-Z\_][a-zA-Z0-9\_]+$=", $property)) {
-					$this->$property = $value;
-					$copied = true;
-				}
-			}
-		}
-
-		return $copied;
-	}
-
-	/**
 	 * Loads search result in it self, instead of returning it
 	 *
 	 * Same as `find_one`, it jsut don't return result, but loads in requesting model
@@ -716,24 +733,75 @@ class MY_Model extends CI_Model {
 
 		return $loaded;
 	}
-	
+
 	/**
-	 * Count resulting rows
+	 * Loads References
 	 *
-	 * Same as find, it just don't return result, but returns count of resulting rows
+	 * This `function` works only if you have specified `const ref` in your derived model. See ReadMe.md for details
 	 *
  	 * @access	public
 	 * @param	`void`
-	 * @param	`int`	Count of resulting rows
+	 * @return	`boolean`	-	`true` in case of References are loaded. Otherwise `false`
 	 *
 	 */
-	public function count () {
-		$result = $this->find();
-		if($result && is_array($result) && count($result)) {
-			return count($result);
+	public function load_refs ( $refs = null ) {
+		
+		if ( $refs = $this->_get_refs( $refs ) ) {
+			$this->ref = array();
+			foreach ($refs as $ref) {
+				$ref_col		= $ref['column'];
+				$ref_table		= $ref['ref']['table'];
+				$ref_table_col	= $ref['ref']['column'];
+				
+				if ( !isset( $this->columns[$ref_col] ) ) continue;
+
+				$CI =& get_instance();
+				$CI->load->model( $ref_table, $ref_table, true );
+				$this->ref["{$ref_col}:{$ref_table}.{$ref_table_col}"] = $CI->$ref_table->where("{$ref_table_col} = ?",  $this->columns[$ref_col])->find();
+
+			}
+			return true;
 		}
-	
-		return 0;
+		return false;
+	}
+
+	/**
+	 * Copy model object
+	 *
+	 * Will copy only if provided object is a same model.
+	 *
+ 	 * @access	private
+	 * @param	`object`	-	model object to copy
+	 * @return	`boolean`	-	`true` in case of successful copy, othewise `false`
+	 *
+	 */
+	private function copy ($object) {
+		$copied = false;
+		if ($object instanceof self) {
+			$object_array = (array) $object;
+
+			foreach ($object_array as $property => $value) {
+				$property_data = explode(chr(0), $property);
+				if ( count($property_data) == 3) {
+					if ( $property_data[1] == "MY_Model") {
+						$this->$property_data[2] = $value;
+
+					} else {
+						$class = new ReflectionClass($this);
+						if ($class->hasProperty($property_data[2])) {
+							$class_property = $class->getProperty($property_data[2]);
+							$class_property->setAccessible(true);
+							$class_property->setValue($this, $value);
+							$copied = true;
+						}
+					}
+				} else if ( count($property_data) == 1) {
+					$this->$property = $value;
+				}
+			}
+		}
+
+		return $copied;
 	}
 	
 	/**
@@ -750,7 +818,7 @@ class MY_Model extends CI_Model {
 	 *
 	 */
 	public function save ( ) {
-		$vars = get_object_vars($this);
+		$vars = $this->columns;
 		$table = $this->_get_table_name();
 		$saved = false;
 
@@ -776,13 +844,13 @@ class MY_Model extends CI_Model {
 				$values	= array();
 
 				foreach ($pks as $pk) {
-					if ( !isset( $this->$pk ) || !$this->$pk ) {
+					if ( !isset( $this->columns[$pk] ) || !$this->columns[$pk] ) {
 						$where = null;
 						$values = null;
 					}
 					$where[]		= "$pk = ?";
-					$values[]		= $this->db->escape( $this->$pk );
-					$pk_vals[$pk]	= $this->$pk;
+					$values[]		= $this->columns[$pk];
+					$pk_vals[$pk]	= $this->columns[$pk];
 				}
 				
 				if ($where && $values) {
@@ -799,6 +867,8 @@ class MY_Model extends CI_Model {
 				log_message('debug', "[Model.$table] (save) - Query: " . $this->db->last_query());
 				if ( !$saved ) {
 					log_message('debug', "[Model.$table] (save) - Error: " . $this->get_error_message() );
+				} else {
+					return true;
 				}
 
 			} else {
@@ -809,7 +879,7 @@ class MY_Model extends CI_Model {
 				if ( $saved ) {
 					$insert_id = $this->db->insert_id( );
 					if ( $ai = $this->_get_ai() ) {
-						$this->$ai = $insert_id;
+						$this->columns[$ai] = $insert_id;
 					}
 					log_message('debug', "[Model.$table] (save) - insert_id = $insert_id");
 		 			return $insert_id ? $insert_id : true;
@@ -838,14 +908,14 @@ class MY_Model extends CI_Model {
 	 */
 	public function delete( ) {
 		$args	= func_get_args();
-		$where	= count($args) ? $args : $this->_get_pk();
+		$where	= func_num_args() ? $args : $this->_get_pk();
 		$table	= $this->_get_table_name();
-		$vars	= get_object_vars($this);
+		$vars	= $this->columns;
 		
 		foreach ($where as $key=>$column) {
-			$where[$key] = "$column=$vars[$column]";
+			$where[$key] = "{$column}={$vars[$column]}";
 		}
-		$where = count($where) > 0 ? implode(" and ", $where) : "id=$vars[id]";
+		$where = count($where) > 0 ? implode(" and ", $where) : "id={$vars['id']}";
 		
 		$query = "delete from $table where $where";
 		
@@ -889,37 +959,186 @@ class MY_Model extends CI_Model {
 		return $this->db->_error_message();
 	}
 
-	public function strip_props( ) {
-		$strip	= array_merge( array( "query_settings" ), func_get_args() );
-		$props	= get_object_vars($this);
+	/**
+	 * Export columns and references of model
+	 *
+	 * This function allows to export model data, without exposing all its functionalities.
+	 * It also allows to stip any speicified columns
+	 *
+	 * @access	public
+	 * @param	`string`	-	Column name to strip from exported object. Can provide multiple columns names as different arguments.
+	 * @param	`object`	-	Resulting export object, after stripping specified columns
+	 *
+	 */
+	public function export( /* $... */ ) {
+		$strip_columns	= func_get_args();
+		$export			= array();
 
-		foreach ($strip as $strip_prop) {
-			if ( isset($props[$strip_prop]) )
-				unset( $props[$strip_prop] );
+		foreach ($this->columns as $column => $value) {
+			if ( array_search($column, $strip_columns) === false )
+				$export[$column] = $value;
 		}
-
-		if ( isset( $props['ref'] ) ) {
-			foreach ($props['ref'] as $ref => $ref_array) {
-				foreach ($ref_array as $key => $ref_obj) {
-					$props['ref'][$ref][$key] = $ref_obj->strip_props();
+		
+		if ( isset( $this->ref ) && is_array( $this->ref ) ) {
+			foreach ($this->ref as $ref => $ref_results) {
+				foreach ($ref_results as $key => $ref_obj) {
+					if ( $ref_obj instanceof MY_Model )
+						$export['ref'][$ref][$key] = $ref_obj->export();
 				}
 			}
 		}
-
-		return (object) $props;
+		return (object) $export;
 	}
 
-	private function _flatten_array( $array ) {
-			return array_reduce( $array, array(get_class($this), "_recursive_flatten_array"), array());	
+	/**
+	 * Allows to get the loaded references
+	 *
+	 * @access	public
+	 * @param	`string`	-	(optional) Single Reference, as defined in `const ref`
+	 * @param	`int`		-	(optional) Index number of Reference object
+	 * @return	`mixed`		-	In case of no parameters, returns complete array of all references. Incase of 1 Parameter, returns array of the provided reference. In case of 2 Parameters, returns Object of the provided reference (if exists). if not found queried reference, returns `null`
+	 *
+	 */
+	public function get_ref( $ref = null, $ref_ind = null ) {
+		if ( $ref ) {
+			if ( isset( $this->ref, $this->ref[$ref] ) ) {
+				return ( is_numeric($ref_ind) && isset($this->ref[$ref][$ref_ind]) 
+						? $this->ref[$ref][$ref_ind] 
+						: $this->ref[$ref] );
+			}
+			
+		} else if ( isset( $this->ref ) && is_array($this->ref) ) {
+			return $this->ref;
+			
+		}
+		return null;
 	}
 
-	private function _recursive_flatten_array ( $carry, $item ) {
-		if ( is_array( $item ) )
-			$carry = array_merge($carry, array_reduce( $item, array(get_class($this), "_recursive_flatten_array"), array() ) );
+	/**
+	 * Sets values of columns
+	 *
+	 * @access	public
+	 * @param	`string`	-	column name
+	 * @param	`mixed`		-	value of column
+	 * @return	`void`
+	 *
+	 */
+	public function set_column ( $column, $value ) {
+		if ( array_key_exists($column, $this->columns ) )
+			$this->columns[$column] = $value;
 		else
-			$carry[] = $item;
+			$this->_undefined_func_exception("set_$column");
+	}
 
-		return $carry;
+	/**
+	 * Gets values of columns
+	 *
+	 * @access	public
+	 * @param	`string`	-	column name
+	 * @return	`mixed`		-	value of column
+	 *
+	 */
+	public function get_column ( $column ) {
+		if ( array_key_exists($column, $this->columns ) )
+			return $this->columns[$column];
+
+		$this->_undefined_func_exception("get_$column");
+	}
+
+	/**
+	 * Displays undefined function call error
+	 *
+	 * @access	private
+	 * @param	`string`	-	Name of called function
+	 * @return	`void`
+	 *
+	 */
+	private function _undefined_func_exception ($func) {
+		throw new Exception("Call to undefined function '$func' on " . get_class($this) . " Model", 1);
+
+	}
+
+	/**
+	 * Helper function to flatten array
+	 *
+	 * @access	private
+	 * @param	`array`	-	array to flatten
+	 * @return	`array`	-	Resulting array
+	 *
+	 */
+	private function _flatten_array( $array ) {
+		return array_reduce($array, function ( $carry, $item ) {
+			if ( is_array( $item ) )
+				$carry = array_merge($carry, $this->_flatten_array( $item ) );
+			else
+				$carry[] = $item;
+
+			return $carry;
+		}, array());
+	}
+
+	/**
+	 * Casts resulting array of search query items to the model object
+	 *
+	 * @access	private
+	 * @param	`array`		-	Array of search query result item
+	 * @return	`object`	-	Casted object
+	 *
+	 */
+	private function _cast ( $array ) {
+		$class = get_class($this);
+		$data = 'O:'.strlen($class).':"'.$class.'":1:{s:10:"' . chr(0).'*'.chr(0) . 'columns";'.serialize($array).'}';
+		$model_object = unserialize($data);
+		$model_object->reset_query();
+
+		return $model_object;
+	}
+
+	/**
+	 * Allows to generate dynamic getters and setters for model columns
+	 *
+	 * @see	http://php.net/manual/en/language.oop5.overloading.php#object.call
+	 */
+	public function __call( $name, $arguments ) {
+		$func = substr($name, 0, 4);
+		$prop = substr($name, 4);
+		if ( $func == "set_" ) {
+			call_user_method_array("set_column", $this, array_merge(array($prop), $arguments));
+
+		} else if ( $func == "get_" ) {
+			return $this->get_column( $prop );
+
+		} else {
+			$this->_undefined_func_exception($name);
+			
+		}
+	}
+
+	/**
+	 * 
+	 *
+	 * @see http://php.net/manual/en/language.oop5.magic.php#object.tostring
+	 */
+	public function __toString() {
+		return json_encode($this->export(), true);
+	}
+
+	/**
+	 * Alternate of `find()`
+	 *
+	 * @see http://php.net/manual/en/language.oop5.magic.php#object.invoke
+	 */
+	public function __invoke( $load_refs = false, $same_obj = false ) {
+		return $this->find( $load_refs, $same_obj );
+	}
+
+	/**
+	 *
+	 *
+	 * @see http://php.net/manual/en/language.oop5.magic.php#object.debuginfo
+	 */
+	public function __debugInfo() {
+		return array_merge(get_object_vars($this), array( "last_db_error" => $this->get_error_message() ));
 	}
 }
 // END Model Class
